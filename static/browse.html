@@ -1,0 +1,65 @@
+<html>
+	<head>
+        <meta charset="utf-8">
+
+		<title>Hub: {{html .Name}}</title>
+        <link rel="stylesheet" href="/static/browse.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <meta name="description" content="">
+        <meta name="author" content="">
+	</head>
+	<body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="./">G8OS Hub</a>
+        </div>
+        </div>
+        </nav>
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1>Hello you !</h1>
+                <p>Do you want to publish your g8os flist to our hub? It's easy !</p>
+                <p>All you need is a <code>.tar.gz</code> archive of your files and upload it here. Have fun !</p>
+                <p><a class="btn btn-primary btn-lg" href="/upload" role="button">Upload my file !</a></p>
+            </div>
+        </div>
+
+        <div class="container">
+        <div class="row">
+
+            <h2>{{.Path}}</h2>
+
+            <table class="table table-hover">
+            {{if .CanGoUp}}
+                <tr>
+                    <td>
+                        <small><a href="..">[..]</a><small>
+                    </td>
+                </tr>
+            {{end}}
+            {{range .Items}}
+            <tr>
+                <td>
+                    <a href="{{html .URL}}">{{html .Name}}</a>
+                </td>
+            </tr>
+            {{end}}
+            </table>
+
+        </div>
+
+        <hr>
+
+        <footer>
+            <p>&copy; 2017 - Green IT Globe</p>
+        </footer>
+        </div>
+	</body>
+</html>

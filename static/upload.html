@@ -1,0 +1,65 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+
+        <title>Upload to the Hub</title>
+        <link rel="stylesheet" href="/static/upload.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <meta name="description" content="">
+        <meta name="author" content="">
+	</head>
+	<body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="./">G8OS Hub</a>
+        </div>
+
+        <div id="navbar" class="navbar-collapse collapse">
+          <form class="navbar-form navbar-right">
+            <a href="#" class="btn btn-success">Logged in: %Username%</a>
+          </form>
+        </div><!--/.navbar-collapse -->
+
+        </div>
+        </nav>
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1>Upload some files !</h1>
+                <p>Do you want to publish your g8os flist to our hub? It's easy !</p>
+                <p>All you need is a <code>.tar.gz</code> archive of your files and upload it here. Have fun !</p>
+            </div>
+        </div>
+
+        <div class="container">
+        <!-- Error Template
+        <div class="row bg-danger" style="padding: 25px; margin-bottom: 15px;">
+            Oops: %Error Message%
+        </div>
+        End Error Template -->
+
+        <div class="row bg-info" style="padding: 25px;">
+            <form action="/upload" method="post" enctype="multipart/form-data">
+              <div class="form-group">
+                <label for="file">Your file:</label>
+                <input type="file" id="file" name="file">
+              </div>
+
+              <button type="submit" class="btn btn-primary">Upload my files !</button>
+            </form>
+        </div>
+
+        <hr>
+
+        <footer>
+            <p>&copy; 2017 - Green IT Globe</p>
+        </footer>
+        </div>
+	</body>
+</html>

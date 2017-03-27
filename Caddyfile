@@ -1,0 +1,35 @@
+0.0.0.0:2015
+
+log stdout
+
+oauth {
+    # itsyou.online client ID
+    client_id       CHANGEME
+
+    # itsyou.online client secret
+    client_secret   CHANGEME
+
+    redirect_url    http://CHANGEME/_iyo_callback
+
+    authentication_required  /upload
+}
+
+proxy /upload PYTHON_HOST:PYTHON_PORT
+
+rewrite / {
+    regexp .*
+    if {uri} not /upload
+    if {uri} not_has _iyo_callback
+    if {dir} not_has static
+    to /users/{uri}
+}
+
+markdown / {
+    css /static/github-markdown.css
+    template /static/markdown.html
+}
+
+browse /users static/browse.html
+browse /static
+
+
