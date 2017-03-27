@@ -3,3 +3,9 @@ body {
   padding-top: 50px;
   padding-bottom: 20px;
 }
+
+table thead tr {
+    background: #BFBFBF;
+    color: #1A1A1A;
+    font-weight: bold;
+}

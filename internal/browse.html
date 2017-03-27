@@ -25,9 +25,9 @@
         <div class="jumbotron">
             <div class="container">
                 <h1>Hello you !</h1>
-                <p>Do you want to publish your g8os flist to our hub? It's easy !</p>
-                <p>All you need is a <code>.tar.gz</code> archive of your files and upload it here. Have fun !</p>
-                <p><a class="btn btn-primary btn-lg" href="/upload" role="button">Upload my file !</a></p>
+                <p>Do you want to publish your g8os flist to our hub? It's easy.</p>
+                <p>All you need is a <code>.tar.gz</code> archive of your files and upload it here. Simple.</p>
+                <p><a class="btn btn-primary btn-lg" href="/upload" role="button">Upload my file</a></p>
             </div>
         </div>
 
@@ -37,20 +37,30 @@
             <h2>{{.Path}}</h2>
 
             <table class="table table-hover">
+                <thead>
+                    <tr>
+                    <td style="width: 50%;">Name</td>
+                    <td>Size</td>
+                    <td>Modification</td>
+                    </tr>
+                </thead>
+                <tbody>
             {{if .CanGoUp}}
                 <tr>
-                    <td>
-                        <small><a href="..">[..]</a><small>
-                    </td>
+                    <td><small><a href="..">[..]</a><small></td>
+                    <td></td><td></td>
                 </tr>
             {{end}}
             {{range .Items}}
+            {{if ne .Name ".keep"}}
             <tr>
-                <td>
-                    <a href="{{html .URL}}">{{html .Name}}</a>
-                </td>
+                <td><a href="{{html .URL}}">{{html .Name}}</a></td>
+                <td>{{if not .IsDir}}{{html .Size}} B{{end}}</td>
+                <td>{{html .ModTime}}</td>
             </tr>
             {{end}}
+            {{end}}
+                </tbody>
             </table>
 
         </div>

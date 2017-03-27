@@ -1,20 +1,17 @@
 0.0.0.0:2015
 
 log stdout
+root public
 
 oauth {
-    # itsyou.online client ID
-    client_id       CHANGEME
+    client_id       __CLIENT_ID__
+    client_secret   __CLIENT_SECRET__
+    redirect_url    http://__HOST__/_iyo_callback
 
-    # itsyou.online client secret
-    client_secret   CHANGEME
-
-    redirect_url    http://CHANGEME/_iyo_callback
-
-    authentication_required  /upload
+    authentication_required    /upload
 }
 
-proxy /upload PYTHON_HOST:PYTHON_PORT
+proxy /upload __PYTHON_HOST__:5000
 
 rewrite / {
     regexp .*
