@@ -29,7 +29,7 @@ markdown / {
     template /static/markdown.html
 }
 
-browse /users static/browse.html
+browse /users internal/browse.html
 browse /static
 
 

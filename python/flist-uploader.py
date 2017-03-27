@@ -54,7 +54,7 @@ def handle_flist(request, filepath, filename):
     if not os.path.exists(home):
         os.mkdir(home)
 
-    dbpath = "%s/flist-%s.tar.gz" % (home, cleanfilename)
+    dbpath = "%s/flist-%s.flist" % (home, cleanfilename)
 
     with tarfile.open(dbpath, "w:gz") as tar:
         tar.add(dbtemp, arcname="")
