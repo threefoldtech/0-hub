@@ -18,5 +18,5 @@ This is a the G8OS Hub Website repository. It contains all the source code neede
 - Run the caddy server: `./caddy`
 - Run the python server: `cd python && jspython flist-uploader.py`
 
-Note: the python server needs `jumpscale 8.2.0` with `g8oscoreclient` to works.
+Note: the python server needs `jumpscale 8.2.0` with `g8storclient` to works.
 
