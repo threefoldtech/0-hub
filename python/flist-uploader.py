@@ -160,7 +160,7 @@ def upload_file():
         return "Access denied."
 
     context = {
-        'username': 'maxuxDebug',
+        'username': request.headers.get('X-Iyo-Username'),
         'organization': ""
     }
 
