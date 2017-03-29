@@ -127,8 +127,9 @@ def uploadSuccess(context, flistname, filescount, home):
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
     }
 
-    readme  = "Source: %s\n" % settings['flisturl']
-    readme += "Storage: %s\n" % settings['ardbhost']
+    readme  = "# %s\n\n" % flistname
+    readme += "Source: `%s`\n\n" % settings['flisturl']
+    readme += "Storage: `%s`\n" % settings['ardbhost']
 
     # remove .flist extension
     readmefile = "%s.md" % flistname[:-6]
