@@ -4,18 +4,7 @@ import shutil
 from flask import Flask, request, redirect, url_for, render_template
 from werkzeug.utils import secure_filename
 from JumpScale import j
-
-#
-# You should adapt this part to your usage
-#
-PUBLIC_ARDB_HOST = "__PUBLIC_HOST__"
-PUBLIC_ARDB_PORT = 1234
-
-PRIVATE_ARDB_HOST = "__PRRIVATE_HOST__"
-PRIVATE_ARDB_PORT = 1234
-
-PUBLIC_WEBADD = "http://__PUBLIC_HOST__"
-
+from config import config
 
 #
 # Theses location should works out-of-box if you use default settings
@@ -42,8 +31,8 @@ def allowed_file(filename):
 
     return False
 
-def handle_flist(request, filepath, filename):
-    username = request.headers['X-Iyo-Username']
+def handle_flist(context, filepath, filename):
+    username = context['username']
 
     #
     # checking and extracting files
@@ -71,7 +60,7 @@ def handle_flist(request, filepath, filename):
     kvs = j.servers.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
     f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
     f.add(target)
-    f.upload(PRIVATE_ARDB_HOST, PRIVATE_ARDB_PORT)
+    f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
 
     #
     # creating the flist archive
@@ -88,8 +77,33 @@ def handle_flist(request, filepath, filename):
     flistname = "flist-%s.flist" % cleanfilename
     dbpath = os.path.join(home, flistname)
 
-    with tarfile.open(dbpath, "w:gz") as tar:
-        tar.add(dbtemp, arcname="")
+    #
+    # UGLY WORKAROUND
+    # No way to check if rocksdb have finished yet
+    # We waits until tar was correctly able to pack stuff
+    # THIS NEED TO BE FIXED
+    #
+    notGood = True
+
+    while notGood:
+        try:
+            with tarfile.open(dbpath, "w:gz") as tar:
+                tar.add(dbtemp, arcname="")
+
+            notGood = False
+        except FileNotFoundError:
+            time.sleep(0.1)
+            pass
+
+        except Exception:
+            return "Someting went wrong, please contact support to report this issue."
+
+    #
+    # FIXME: UGLY WORKAROUND
+    #
+
+    # with tarfile.open(dbpath, "w:gz") as tar:
+    #    tar.add(dbtemp, arcname="")
 
     # cleaning
     shutil.rmtree(target)
@@ -99,34 +113,44 @@ def handle_flist(request, filepath, filename):
     #
     # rendering summary page
     #
-    return uploadSuccess(request, flistname, filescount)
+    return uploadSuccess(context, flistname, filescount, home)
 
-def uploadSuccess(request, flistname, filescount):
+def uploadSuccess(context, flistname, filescount, home):
     template = os.path.join("success.html")
 
-    username = request.headers['X-Iyo-Username']
+    username = context['username']
     settings = {
         'username': username,
         'flistname': flistname,
         'filescount': filescount,
-        'flisturl': "%s/%s/%s" % (PUBLIC_WEBADD, username, flistname),
-        'ardbhost': 'ardb://%s:%d' % (PUBLIC_ARDB_HOST, PUBLIC_ARDB_PORT),
+        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
+        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
     }
+
+    readme  = "Source: %s\n" % settings['flisturl']
+    readme += "Storage: %s\n" % settings['ardbhost']
+
+    # remove .flist extension
+    readmefile = "%s.md" % flistname[:-6]
+    readmepath = os.path.join(home, readmefile)
+
+    with open(readmepath, "w") as f:
+        f.write(readme)
 
     return render_template(template, **settings)
 
-def uploadError(request, errstr):
+def uploadError(context, errstr):
     template = os.path.join("upload.html")
     settings = {
-        'username': request.headers['X-Iyo-Username'],
+        'username': context['username'],
         'error': errstr
     }
 
     return render_template(template, **settings)
 
-def uploadDefault(request):
+def uploadDefault(context):
     template = os.path.join("upload.html")
-    settings = {'username': request.headers['X-Iyo-Username']}
+    settings = {'username': context['username']}
 
     return render_template(template, **settings)
 
@@ -135,18 +159,23 @@ def upload_file():
     if not request.headers.get('X-Iyo-Username'):
         return "Access denied."
 
+    context = {
+        'username': 'maxuxDebug',
+        'organization': ""
+    }
+
     if request.method == 'POST':
         # check if the post request has the file part
         print(request.files)
         if 'file' not in request.files:
-            return uploadError(request, "No file found")
+            return uploadError(context, "No file found")
 
         file = request.files['file']
 
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
-            return uploadError(request, "No file selected")
+            return uploadError(context, "No file selected")
 
         print(file.filename)
         if file and allowed_file(file.filename):
@@ -155,12 +184,12 @@ def upload_file():
             target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(target)
 
-            return handle_flist(request, target, filename)
+            return handle_flist(context, target, filename)
 
         else:
-            return uploadError(request, "This file is not allowed.")
+            return uploadError(context, "This file is not allowed.")
 
-    return uploadDefault(request)
+    return uploadDefault(context)
 
 print("[+] listening")
 app.run(host="0.0.0.0", debug=False, threaded=True)
