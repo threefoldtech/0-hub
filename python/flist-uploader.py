@@ -74,7 +74,7 @@ def handle_flist(context, filepath, filename):
     if not os.path.exists(home):
         os.mkdir(home)
 
-    flistname = "flist-%s.flist" % cleanfilename
+    flistname = "%s.flist" % cleanfilename
     dbpath = os.path.join(home, flistname)
 
     #
