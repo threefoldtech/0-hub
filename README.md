@@ -1,6 +1,9 @@
 # G8OS Hub Website
 This is a the G8OS Hub Website repository. It contains all the source code needed to make the public Hub front-end.
 
+## Releases:
+- [1.0.0](https://github.com/g8os/hub/tree/1.0.0) - last release
+
 # Installation
 - Grab a `caddy` version which supports `itsyouonline-oauth` [caddy-integration](https://github.com/itsyouonline/caddy-integration)
 - Clone this repository
