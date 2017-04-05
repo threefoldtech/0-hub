@@ -2,9 +2,13 @@ import os
 import tarfile
 import shutil
 import time
-from flask import Flask, request, redirect, url_for, render_template
+# import markdown
+import datetime
+import json
+from flask import Flask, request, redirect, url_for, render_template, abort, Markup, make_response
 from werkzeug.utils import secure_filename
-from JumpScale import j
+from werkzeug.contrib.fixers import ProxyFix
+# from JumpScale import j
 from config import config
 
 #
@@ -22,8 +26,26 @@ print("[+] upload directory: %s" % UPLOAD_FOLDER)
 print("[+] flist creation  : %s" % FLIST_TEMPDIR)
 print("[+] public directory: %s" % PUBLIC_FOLDER)
 
+class IYOChecker(object):
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        req = environ['werkzeug.request']
+        environ['username'] = None
+
+        if req.headers.get('X-Iyo-Username'):
+            environ['username'] = req.headers['X-Iyo-Username']
+
+        return self.app(environ, start_response)
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+static_folder='pdf'
+
+app.wsgi_app = IYOChecker(app.wsgi_app)
+app.wsgi_app = ProxyFix(app.wsgi_app)
+app.url_map.strict_slashes = False
 
 def allowed_file(filename):
     for ext in ALLOWED_EXTENSIONS:
@@ -32,8 +54,12 @@ def allowed_file(filename):
 
     return False
 
-def handle_flist(context, filepath, filename):
-    username = context['username']
+def globalTemplate(filename, args):
+    args['debug'] = config['DEBUG']
+    return render_template(filename, **args)
+
+def handle_flist(filepath, filename):
+    username = request.environ['username']
 
     #
     # checking and extracting files
@@ -47,6 +73,7 @@ def handle_flist(context, filepath, filename):
     # print(t.getnames())
     # ADD SECURITY CHECK
 
+    print("[+] extracting files")
     t = tarfile.open(filepath, "r:gz")
     t.extractall(path=target)
 
@@ -114,12 +141,10 @@ def handle_flist(context, filepath, filename):
     #
     # rendering summary page
     #
-    return uploadSuccess(context, flistname, filescount, home)
+    return uploadSuccess(flistname, filescount, home)
 
-def uploadSuccess(context, flistname, filescount, home):
-    template = os.path.join("success.html")
-
-    username = context['username']
+def uploadSuccess(flistname, filescount, home):
+    username = request.environ['username']
     settings = {
         'username': username,
         'flistname': flistname,
@@ -139,59 +164,158 @@ def uploadSuccess(context, flistname, filescount, home):
     with open(readmepath, "w") as f:
         f.write(readme)
 
-    return render_template(template, **settings)
+    return globalTemplate("success.html", settings)
 
-def uploadError(context, errstr):
-    template = os.path.join("upload.html")
+def uploadError(errstr):
     settings = {
-        'username': context['username'],
+        'username': request.environ['username'],
         'error': errstr
     }
 
-    return render_template(template, **settings)
+    return globalTemplate("upload.html", settings)
 
-def uploadDefault(context):
-    template = os.path.join("upload.html")
-    settings = {'username': context['username']}
+def uploadDefault():
+    settings = {'username': request.environ['username']}
 
-    return render_template(template, **settings)
+    return globalTemplate("upload.html", settings)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
-    if not request.headers.get('X-Iyo-Username'):
+    if not request.environ['username']:
         return "Access denied."
-
-    context = {
-        'username': request.headers.get('X-Iyo-Username'),
-        'organization': ""
-    }
 
     if request.method == 'POST':
         # check if the post request has the file part
-        print(request.files)
         if 'file' not in request.files:
-            return uploadError(context, "No file found")
+            return uploadError("No file found")
 
         file = request.files['file']
 
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
-            return uploadError(context, "No file selected")
+            return uploadError("No file selected")
 
         print(file.filename)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
 
+            print("[+] saving file")
             target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(target)
 
-            return handle_flist(context, target, filename)
+            return handle_flist(target, filename)
 
         else:
-            return uploadError(context, "This file is not allowed.")
+            return uploadError("This file is not allowed.")
 
-    return uploadDefault(context)
+    return uploadDefault()
+
+@app.route('/')
+def show_users():
+    dirs = os.listdir(PUBLIC_FOLDER)
+
+    variables = {
+        'officials': [],
+        'contributors': []
+    }
+
+    for dir in dirs:
+        if dir in config['PUBLIC_IGNORE']:
+            continue
+
+        if dir in config['PUBLIC_OFFICIALS']:
+            variables['officials'].append(dir)
+
+        else:
+            variables['contributors'].append(dir)
+
+    return globalTemplate("users.html", variables)
+
+@app.route('/<username>')
+def show_user(username):
+    path = os.path.join(PUBLIC_FOLDER, username)
+    if not os.path.exists(path):
+        abort(404)
+
+    files = os.listdir(path)
+
+    variables = {
+        'targetuser': username,
+        'files': []
+    }
+
+    for file in files:
+        stat = os.stat(os.path.join(PUBLIC_FOLDER, username, file))
+
+        updated = datetime.datetime.fromtimestamp(int(stat.st_mtime))
+
+        variables['files'].append({
+            'name': file,
+            'size': "%.2f KB" % ((stat.st_size) / 1024),
+            'updated': updated,
+        })
+
+    return globalTemplate("user.html", variables)
+
+@app.route('/<username>/<flist>.md')
+def show_flist_md(username, flist):
+    path = os.path.join(PUBLIC_FOLDER, username, flist)
+    if not os.path.exists(path):
+        abort(404)
+
+    variables = {
+        'targetuser': username,
+        'flistname': flist,
+        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
+        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+    }
+
+    return globalTemplate("preview.html", variables)
+
+@app.route('/<username>/<flist>.txt')
+def show_flist_txt(username, flist):
+    path = os.path.join(PUBLIC_FOLDER, username, flist)
+    if not os.path.exists(path):
+        abort(404)
+
+    text  = "File:     %s\n" % flist
+    text += "Uploader: %s\n" % username
+    text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist)
+    text += "Storage:  ardb://%s:%d\n" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+
+    response = make_response(text)
+    response.headers["Content-Type"] = "plain/text"
+
+    return response
+
+@app.route('/<username>/<flist>.json')
+def show_flist_json(username, flist):
+    path = os.path.join(PUBLIC_FOLDER, username, flist)
+    if not os.path.exists(path):
+        abort(404)
+
+    data = {
+        'flist': flist,
+        'uploader': username,
+        'source': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
+        'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+    }
+
+    response = make_response(json.dumps(data) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route('/<username>/<flist>.flist')
+def download_flist(username, flist):
+    # response.headers["Cache-Control"] = "must-revalidate"
+    # response.headers["Pragma"] = "must-revalidate"
+    # response.headers["Content-type"] = "application/csv"
+
+    # show the user profile for that user
+    return 'download %s - %s' % (username, flist)
+
 
 print("[+] listening")
-app.run(host="0.0.0.0", debug=False, threaded=True)
+app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)

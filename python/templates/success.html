@@ -1,53 +1,19 @@
-<html>
-    <head>
-        <meta charset="utf-8">
+{% extends "layout.html" %}
+{% block title %}GIG Hub{% endblock %}
 
-        <title>Upload to the Hub</title>
-        <link rel="stylesheet" href="/static/upload.css">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <meta name="description" content="">
-        <meta name="author" content="">
-	</head>
-	<body>
-        <nav class="navbar navbar-inverse navbar-fixed-top">
-        <div class="container">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="./">G8OS Hub</a>
-        </div>
-
-        <div id="navbar" class="navbar-collapse collapse">
-          <form class="navbar-form navbar-right">
-            <a href="#" class="btn btn-success">Logged in: {{ username }}</a>
-          </form>
-        </div>
-
-        </div>
-        </nav>
-
-        <div class="jumbotron">
-            <div class="container">
-                <h1>Well done</h1>
-                <p>Your flist <code>{{ flistname }}</code> is available.</p>
-                <p>
-                    To start a container, use the following informations:
-                    <ul>
-                        <li>Source: <code>{{ flisturl }}</code></li>
-                        <li>Storage: <code>{{ ardbhost }}</code></li>
-                    </ul>
-                </p>
-                <p>For your information, we found <code>{{ filescount }} files</code> in your archive.</p>
-            </div>
-        </div>
-
-        <div class="container">
-            <footer>
-                <p>&copy; 2017 - GIG Technology NV</p>
-            </footer>
-        </div>
-	</body>
-</html>
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Well done</h1>
+        <p>Your flist <code>{{ flistname }}</code> is available.</p>
+        <p>
+            To start a container, use the following informations:
+            <ul>
+                <li>Source: <code>{{ flisturl }}</code></li>
+                <li>Storage: <code>{{ ardbhost }}</code></li>
+            </ul>
+        </p>
+        <p>For your information, we found <code>{{ filescount }} files</code> in your archive.</p>
+    </div>
+</div>
+{% endblock %}

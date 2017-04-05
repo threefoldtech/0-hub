@@ -1,0 +1,23 @@
+body {
+  padding-top: 51px;
+}
+
+table thead tr {
+    font-weight: bold;
+    border-bottom: solid 2px #BFBFBF;
+}
+
+.debug {
+    height: 50px;
+    line-height: 50px;
+    font-size: 21px;
+    text-align: center;
+    border-top: dashed 1px #1E90FF;
+    border-bottom: dashed 1px #1E90FF;
+    background: #ADD8E6;
+}
+
+.jumbotron {
+    padding-top: 10px !important;
+    padding-bottom: 20px !important;
+}

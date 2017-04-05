@@ -9,4 +9,10 @@ config = {
     'PRIVATE_ARDB_PORT': 5678,
 
     'PUBLIC_WEBADD': "https://__PUBLIC_HOST__",
+
+    'PUBLIC_IGNORE': ['.', '..', '.keep'],
+    'PUBLIC_OFFICIALS': [],
+
+    # enable debug or production mode
+    'DEBUG': True,
 }
