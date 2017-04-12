@@ -179,6 +179,28 @@ def uploadDefault():
 
     return globalTemplate("upload.html", settings)
 
+
+#
+# flist operation
+#
+def flist_md5(username, flistname):
+    hash_md5 = hashlib.md5()
+    fname = os.path.join(PUBLIC_FOLDER, username, flistname)
+
+    print("[+] md5: %s\n" % fname)
+
+    if not os.path.isfile(fname):
+        return None
+
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
+
+#
+# Routing
+#
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     if not request.environ['username']:
@@ -269,6 +291,7 @@ def show_flist_md(username, flist):
         'flistname': flist,
         'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'checksum': flist_md5(username, flist)
     }
 
     return globalTemplate("preview.html", variables)
@@ -283,6 +306,7 @@ def show_flist_txt(username, flist):
     text += "Uploader: %s\n" % username
     text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist)
     text += "Storage:  ardb://%s:%d\n" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+    text += "Checksum: %s\n" % flist_md5(username, flist)
 
     response = make_response(text)
     response.headers["Content-Type"] = "plain/text"
@@ -299,7 +323,8 @@ def show_flist_json(username, flist):
         'flist': flist,
         'uploader': username,
         'source': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
-        'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+        'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'checksum': flist_md5(username, flist)
     }
 
     response = make_response(json.dumps(data) + "\n")
@@ -318,19 +343,11 @@ def download_flist(username, flist):
 
 @app.route('/<username>/<flist>.flist.md5')
 def checksum_flist(username, flist):
-    hash_md5 = hashlib.md5()
-    fname = os.path.join(PUBLIC_FOLDER, username, "%s.flist" % flist)
-
-    print("[+] md5: %s\n", fname)
-
-    if not os.path.isfile(fname):
+    hash = flist_md5(username, "%s.flist" % flist)
+    if not hash:
         abort(404)
 
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    response = make_response(hash_md5.hexdigest() + "\n")
+    response = make_response(hash + "\n")
     response.headers["Content-Type"] = "plain/text"
 
     return response
