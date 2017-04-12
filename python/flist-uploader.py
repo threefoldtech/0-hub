@@ -5,6 +5,7 @@ import time
 # import markdown
 import datetime
 import json
+import hashlib
 from flask import Flask, request, redirect, url_for, render_template, abort, Markup, make_response
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
@@ -41,7 +42,6 @@ class IYOChecker(object):
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-static_folder='pdf'
 
 app.wsgi_app = IYOChecker(app.wsgi_app)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -315,6 +315,25 @@ def download_flist(username, flist):
 
     # show the user profile for that user
     return 'download %s - %s' % (username, flist)
+
+@app.route('/<username>/<flist>.flist.md5')
+def checksum_flist(username, flist):
+    hash_md5 = hashlib.md5()
+    fname = os.path.join(PUBLIC_FOLDER, username, "%s.flist" % flist)
+
+    print("[+] md5: %s\n", fname)
+
+    if not os.path.isfile(fname):
+        abort(404)
+
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    response = make_response(hash_md5.hexdigest() + "\n")
+    response.headers["Content-Type"] = "plain/text"
+
+    return response
 
 
 print("[+] listening")
