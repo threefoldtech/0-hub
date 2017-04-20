@@ -73,7 +73,7 @@ def handle_flist(filepath, filename):
     # ADD SECURITY CHECK
 
     print("[+] extracting files")
-    t = tarfile.open(filepath, "r:gz")
+    t = tarfile.open(filepath, "r:*")
     t.extractall(path=target)
 
     filescount = len(t.getnames())
