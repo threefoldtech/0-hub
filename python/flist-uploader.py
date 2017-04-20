@@ -312,7 +312,7 @@ def show_flist_txt(username, flist):
     text += "Checksum: %s\n" % flist_md5(username, flist)
 
     response = make_response(text)
-    response.headers["Content-Type"] = "plain/text"
+    response.headers["Content-Type"] = "text/plain"
 
     return response
 
@@ -349,7 +349,7 @@ def checksum_flist(username, flist):
         abort(404)
 
     response = make_response(hash + "\n")
-    response.headers["Content-Type"] = "plain/text"
+    response.headers["Content-Type"] = "text/plain"
 
     return response
 
