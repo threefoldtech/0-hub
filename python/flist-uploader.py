@@ -2,14 +2,13 @@ import os
 import tarfile
 import shutil
 import time
-# import markdown
 import datetime
 import json
 import hashlib
-from flask import Flask, request, redirect, url_for, render_template, abort, Markup, make_response
+from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
-# from JumpScale import j
+from JumpScale import j
 from config import config
 
 #
@@ -199,7 +198,7 @@ def flist_md5(username, flistname):
     return hash_md5.hexdigest()
 
 #
-# Routing
+# navigation
 #
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
@@ -280,6 +279,10 @@ def show_user(username):
 
     return globalTemplate("user.html", variables)
 
+#
+# flist request
+#
+
 @app.route('/<username>/<flist>.md')
 def show_flist_md(username, flist):
     path = os.path.join(PUBLIC_FOLDER, username, flist)
@@ -334,12 +337,10 @@ def show_flist_json(username, flist):
 
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
-    # response.headers["Cache-Control"] = "must-revalidate"
-    # response.headers["Pragma"] = "must-revalidate"
-    # response.headers["Content-type"] = "application/csv"
+    source = os.path.join(PUBLIC_FOLDER, username)
+    filename = "%s.flist" % flist
 
-    # show the user profile for that user
-    return 'download %s - %s' % (username, flist)
+    return send_from_directory(directory=source, filename=filename)
 
 @app.route('/<username>/<flist>.flist.md5')
 def checksum_flist(username, flist):
