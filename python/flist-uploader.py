@@ -65,7 +65,7 @@ def handle_flist(filepath, filename):
     #
     target = os.path.join(FLIST_TEMPDIR, filename)
     if os.path.exists(target):
-        return uploadError(request, "We are already processing this file.")
+        return uploadError("We are already processing this file.")
 
     os.mkdir(target)
 
