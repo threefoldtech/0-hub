@@ -355,4 +355,5 @@ def checksum_flist(username, flist):
 
 
 print("[+] listening")
-app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
+# app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
+app.run(host="0.0.0.0", port=5555, debug=True, threaded=True)
