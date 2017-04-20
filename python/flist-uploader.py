@@ -152,6 +152,7 @@ def uploadSuccess(flistname, filescount, home):
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
     }
 
+    """
     readme  = "# %s\n\n" % flistname
     readme += "Source: `%s`\n\n" % settings['flisturl']
     readme += "Storage: `%s`\n" % settings['ardbhost']
@@ -162,6 +163,7 @@ def uploadSuccess(flistname, filescount, home):
 
     with open(readmepath, "w") as f:
         f.write(readme)
+    """
 
     return globalTemplate("success.html", settings)
 
