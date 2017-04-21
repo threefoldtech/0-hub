@@ -356,7 +356,21 @@ def checksum_flist(username, flist):
 
     return response
 
+@app.route('/api/list')
+def api_list():
+    root = sorted(os.listdir(PUBLIC_FOLDER))
+    output = []
+
+    for user in root:
+        flists = sorted(os.listdir(os.path.join(PUBLIC_FOLDER, user)))
+        for flist in flists:
+            output.append("%s/%s" % (user, flist))
+
+    response = make_response("\n".join(output))
+    response.headers["Content-Type"] = "text/plain"
+
+    return response
+
 
 print("[+] listening")
-# app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
-app.run(host="0.0.0.0", port=5555, debug=True, threaded=True)
+app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
