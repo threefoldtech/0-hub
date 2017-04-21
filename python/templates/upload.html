@@ -27,12 +27,12 @@
 
 <div id="home" style="display: block;">
     {% if error %}
-    <div class="row bg-danger" style="padding: 25px; margin-bottom: 15px;">
-        Oops: {{ error }}
+    <div class="alert alert-danger" role="alert">
+        <strong>Oops:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <div class="row bg-info" style="padding: 25px;">
+    <div class="bg-info" style="padding: 25px;">
         <form action="/upload" method="post" enctype="multipart/form-data">
           <div class="form-group">
             <label for="file">Your file:</label>
