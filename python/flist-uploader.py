@@ -8,6 +8,7 @@ import hashlib
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.wrappers import Request
 from JumpScale import j
 from config import config
 
@@ -31,7 +32,7 @@ class IYOChecker(object):
         self.app = app
 
     def __call__(self, environ, start_response):
-        req = environ['werkzeug.request']
+        req = Request(environ, shallow=True)
         environ['username'] = None
 
         if req.headers.get('X-Iyo-Username'):
