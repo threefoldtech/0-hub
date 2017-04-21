@@ -362,7 +362,13 @@ def api_list():
     output = []
 
     for user in root:
-        flists = sorted(os.listdir(os.path.join(PUBLIC_FOLDER, user)))
+        target = os.path.join(PUBLIC_FOLDER, user)
+
+        # ignore files (eg: .keep file)
+        if not os.path.isdir(target):
+            continue
+
+        flists = sorted(os.listdir(target))
         for flist in flists:
             output.append("%s/%s" % (user, flist))
 
