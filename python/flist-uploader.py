@@ -237,7 +237,7 @@ def upload_file():
 
 @app.route('/')
 def show_users():
-    dirs = os.listdir(PUBLIC_FOLDER)
+    dirs = sorted(os.listdir(PUBLIC_FOLDER))
 
     variables = {
         'officials': [],
@@ -262,7 +262,7 @@ def show_user(username):
     if not os.path.exists(path):
         abort(404)
 
-    files = os.listdir(path)
+    files = sorted(os.listdir(path))
 
     variables = {
         'targetuser': username,
