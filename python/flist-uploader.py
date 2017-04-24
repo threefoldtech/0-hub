@@ -5,6 +5,7 @@ import time
 import datetime
 import json
 import hashlib
+import tempfile
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
@@ -58,6 +59,33 @@ def globalTemplate(filename, args):
     args['debug'] = config['DEBUG']
     return render_template(filename, **args)
 
+def mkflist(directory, target):
+    #
+    # UGLY WORKAROUND
+    # No way to check if rocksdb have finished yet
+    # We waits until tar was correctly able to pack stuff
+    # THIS NEED TO BE FIXED
+    #
+    notGood = True
+
+    while notGood:
+        try:
+            with tarfile.open(target, "w:gz") as tar:
+                tar.add(directory, arcname="")
+
+            notGood = False
+        except FileNotFoundError:
+            time.sleep(0.1)
+            pass
+
+        except Exception:
+            return None
+
+    #
+    # FIXME: UGLY WORKAROUND
+    #
+    return True
+
 def handle_flist(filepath, filename):
     username = request.environ['username']
 
@@ -105,33 +133,8 @@ def handle_flist(filepath, filename):
     flistname = "%s.flist" % cleanfilename
     dbpath = os.path.join(home, flistname)
 
-    #
-    # UGLY WORKAROUND
-    # No way to check if rocksdb have finished yet
-    # We waits until tar was correctly able to pack stuff
-    # THIS NEED TO BE FIXED
-    #
-    notGood = True
-
-    while notGood:
-        try:
-            with tarfile.open(dbpath, "w:gz") as tar:
-                tar.add(dbtemp, arcname="")
-
-            notGood = False
-        except FileNotFoundError:
-            time.sleep(0.1)
-            pass
-
-        except Exception:
-            return "Someting went wrong, please contact support to report this issue."
-
-    #
-    # FIXME: UGLY WORKAROUND
-    #
-
-    # with tarfile.open(dbpath, "w:gz") as tar:
-    #    tar.add(dbtemp, arcname="")
+    if not mkflist(dbtemp, dbpath):
+        return "Someting went wrong, please contact support to report this issue."
 
     # cleaning
     shutil.rmtree(target)
@@ -143,6 +146,67 @@ def handle_flist(filepath, filename):
     #
     return uploadSuccess(flistname, filescount, home)
 
+def handle_merge(sources, targetname):
+    status = flist_merging(sources, targetname)
+
+    if not status == True:
+        variables = {'error': "Something went wrong, please contact support"}
+        return globalTemplate("merge.html", variables)
+
+    username = request.environ['username']
+    home = os.path.join(PUBLIC_FOLDER, username)
+
+    return uploadSuccess(targetname, 0, home)
+
+def flist_merging(sources, targetname):
+    items = {}
+    merger = j.tools.flist.get_merger()
+    username = request.environ['username']
+
+    #
+    # Extracting flists to distinct directories
+    #
+    for source in sources:
+        workdir = tempfile.TemporaryDirectory(prefix="merge-")
+
+        print("[+] %s: %s" % (source, workdir.name))
+        filepath = os.path.join(PUBLIC_FOLDER, source)
+
+        t = tarfile.open(filepath, "r:*")
+        t.extractall(path=workdir.name)
+        t.close()
+
+        kvs = j.servers.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=workdir.name)
+        kdb = j.tools.flist.getFlist(rootpath=workdir.name, kvs=kvs)
+        merger.add_source(kdb)
+
+        items[source] = {
+            'workdir': workdir,
+            'kvs': kvs,
+            'kdb': kdb
+        }
+
+    #
+    # Merging sources
+    #
+    target = tempfile.TemporaryDirectory(prefix="merge-target-")
+    kvs = j.servers.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
+    ktarget = j.tools.flist.getFlist(rootpath='/', kvs=kvs)
+
+    merger.add_destination(ktarget)
+    merger.merge()
+
+    flist = os.path.join(PUBLIC_FOLDER, username, targetname)
+
+    #
+    # Release new build
+    #
+    if not mkflist(target.name, flist):
+        return "Someting went wrong, please contact support to report this issue."
+
+    return True
+
+
 def uploadSuccess(flistname, filescount, home):
     username = request.environ['username']
     settings = {
@@ -152,19 +216,6 @@ def uploadSuccess(flistname, filescount, home):
         'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
     }
-
-    """
-    readme  = "# %s\n\n" % flistname
-    readme += "Source: `%s`\n\n" % settings['flisturl']
-    readme += "Storage: `%s`\n" % settings['ardbhost']
-
-    # remove .flist extension
-    readmefile = "%s.md" % flistname[:-6]
-    readmepath = os.path.join(home, readmefile)
-
-    with open(readmepath, "w") as f:
-        f.write(readme)
-    """
 
     return globalTemplate("success.html", settings)
 
@@ -372,11 +423,51 @@ def api_list():
         for flist in flists:
             output.append("%s/%s" % (user, flist))
 
-    response = make_response("\n".join(output))
+    response = make_response("\n".join(output) + "\n")
     response.headers["Content-Type"] = "text/plain"
 
     return response
 
+@app.route('/merge', methods=['GET', 'POST'])
+def flist_merge():
+    if not request.environ['username']:
+        return "Access denied."
+
+    if request.method == 'POST':
+        data = flist_merge_post()
+
+        if data['error']:
+            variables = {'error': data['error']}
+            return globalTemplate("merge.html", variables)
+
+        return handle_merge(data['sources'], data['targetname'])
+
+    # Merge page
+    variables = {}
+    return globalTemplate("merge.html", variables)
+
+def flist_merge_post():
+    data = {}
+    data['error'] = None
+
+    data['sources'] = request.form.getlist('flists[]')
+    if len(data['sources']) == 0:
+        data['error'] = "No source selected"
+        return data
+
+    data['targetname'] = request.form['name']
+    if not data['targetname']:
+        data['error'] = "Missing build name"
+        return data
+
+    if "/" in data['targetname']:
+        data['error'] = "Build name not allowed"
+        return data
+
+    if not data['targetname'].endswith('.flist'):
+        data['targetname'] += '.flist'
+
+    return data
 
 print("[+] listening")
 app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)

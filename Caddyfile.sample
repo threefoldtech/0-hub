@@ -9,6 +9,7 @@ oauth {
     redirect_url    http://__HOST__/_iyo_callback
 
     authentication_required    /upload
+    authentication_required    /merge
 }
 
 proxy / __PYTHON_HOST__:5000 {

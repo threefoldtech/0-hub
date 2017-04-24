@@ -19,14 +19,18 @@
             <div class="navbar-header">
                 <a class="navbar-brand" href="/">G8OS Hub</a>
             </div>
+            <div id="navbar" class="navbar-collapse collapse">
+              <ul class="nav navbar-nav">
+                <li><a href="/upload">Upload</a></li>
+                <li><a href="/merge">Customize</a></li>
+              </ul>
 
             {% if username %}
-            <div id="navbar" class="navbar-collapse collapse">
               <form class="navbar-form navbar-right">
                 <a href="#" class="btn btn-success">Logged in: {{ username }}</a>
               </form>
-            </div>
             {% endif %}
+            </div>
         </div>
         </nav>
 

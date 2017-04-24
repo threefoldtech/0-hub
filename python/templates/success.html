@@ -13,7 +13,9 @@
                 <li>Storage: <code>{{ ardbhost }}</code></li>
             </ul>
         </p>
+        {% if filescount > 0 %}
         <p>For your information, we found <code>{{ filescount }} files</code> in your archive.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

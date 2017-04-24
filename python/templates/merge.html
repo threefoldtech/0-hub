@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+{% block title %}GIG Hub{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Customization</h1>
+        <p>With this tool, you can create a customized flist my merging multiple flist together.</p>
+    </div>
+</div>
+
+<div class="container">
+    <ol class="breadcrumb">
+        <li><a href="/">Repositories</a></li>
+        <li class="active">Customize</li>
+    </ol>
+
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        <strong>Oops:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <form class="form-horizontal" method="post" action="/merge">
+    <h2>Select the archives</h2>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Based on</label>
+        <div class="col-sm-10">
+            <select name="flists[]" class="form-control flist-list">
+                <option>Loading...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Merge with</label>
+        <div class="col-sm-10">
+            <select name="flists[]" class="form-control flist-list">
+                <option>Loading...</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="flistDynamic">
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label"></label>
+        <div class="col-sm-10">
+            <a href="#" id="adder" class="btn btn-primary">Add one more archive to merge</a>
+        </div>
+    </div>
+
+    <h2>Personalize your build</h2>
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Build name</label>
+        <div class="col-sm-10">
+            <input type="text" name="name" class="form-control" placeholder="customized-build">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label"></label>
+        <div class="col-sm-10">
+            <button type="submit" class="btn btn-success">Create my flist</button>
+        </div>
+    </div>
+
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+var uid = 0;
+var options = [];
+
+function newmerge() {
+    $('#flistDynamic').append(
+        $('<div>', {'class': 'form-group', 'id': 'added-' + uid}).append(
+            $('<label>', {'class': 'col-sm-2 control-label'}).html('and')
+        ).append(
+            $('<div>', {'class': 'col-sm-8'}).append(
+                $('<select>', {'name': 'flists[]', 'class': 'form-control'}).html(getoptions())
+            )
+        ).append(
+            $('<div>', {'class': 'col-sm-2'}).append(
+                $('<a>', {'href': '#', 'class': 'btn btn-danger', 'onclick': 'delmerge("' + uid + '")'}).html('Remove')
+            )
+        )
+    );
+
+    uid++;
+}
+
+function delmerge(uid) {
+    $('#added-' + uid).remove();
+}
+
+function getoptions() {
+    var items = [];
+
+    for(var i in options)
+        items.push($('<option>').html(options[i]));
+
+    return items;
+}
+
+function lister(data) {
+    options = data.trim().split("\n");
+    $('.flist-list').html(getoptions());
+}
+
+$(document).ready(function() {
+    $('#adder').click(function(event) {
+        event.preventDefault();
+        newmerge();
+    });
+
+    $.get('/api/list', lister);
+});
+</script>
+{% endblock %}
