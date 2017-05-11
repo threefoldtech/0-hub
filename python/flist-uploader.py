@@ -115,7 +115,7 @@ def handle_flist(filepath, filename):
 
     kvs = j.servers.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
     f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
-    f.add(target)
+    f.add(target, excludes=[".*\.pyc", ".*__pycache__"])
     f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
 
     #
