@@ -1,1 +1,1 @@
-# Getting Started with the G8OS Hub
+# Getting Started with the Zero-OS Hub

@@ -1,1 +1,1 @@
-# G8OS Hub
+# Zero-OS Hub
