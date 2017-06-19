@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+
+# Click library has some problems with python3 when it comes to unicode: http://click.pocoo.org/5/python3/#python3-surrogates
+# to fix this we need to set the environ variables to export the locales
+import os
+os.environ['LC_ALL'] = 'C.UTF-8'
+os.environ['LANG'] = 'C.UTF-8'
+
+from js9 import j
+import click
+import tarfile
+import shutil
+import requests
+import hashlib
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.group()
+def sync():
+    """
+    Sync flists
+    """
+
+
+@cli.group()
+def upload():
+    """
+    Upload tar files
+    """
+
+
+def download(url, path):
+    dirname = os.path.dirname(path)
+    os.makedirs(dirname, exist_ok=True)
+    with open(path, 'bw+') as fl:
+        data = requests.get(url, stream=True)
+        shutil.copyfileobj(data.raw, fl)
+
+
+@upload.command('ardb', help='Upload tar file to ardb')
+@click.option('-f', '--filepath', help='Filepath of tar to upload')
+@click.option('-h', '--host', help='ARDB host')
+@click.option('-p', '--port', help='ARDB port', type=int, default=16379)
+def upload_ardb(filepath, host, port):
+    target = j.sal.fs.getTmpDirPath()
+    try:
+        t = tarfile.open(filepath, "r:*")
+        t.extractall(path=target)
+        t.close()
+
+        dbtemp = '%s.db' % target
+
+        kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
+        f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
+        f.add(target)
+        f.upload(host, port)
+    finally:
+        shutil.rmtree(target)
+
+
+@upload.command('hub', help='Upload tar file to hub')
+@click.option('-f', '--filepath', help='Filepath of tar to upload', required=True)
+@click.option('-u', '--url', help='http path of the hub defaults to: https://hub.gig.tech/', default='https://hub.gig.tech/')
+def upload_hub(filepath, url):
+    jwt = os.environ.get('JWT')
+    if not jwt:
+        print("JWT environment variable not set")
+        sys.exit(1)
+
+    authorization = {'Authorization': 'bearer %s' % jwt}
+    files = {'file': open(filepath, 'rb')}
+
+    print("Uploading: %s" % localfile)
+
+    r = requests.post('{}/upload'.format(url), files=files, headers=authorization)
+    print(r.ok)
+
+
+@sync.command('metadata', help="Sync flist metadata")
+@click.option('-u', '--url', help='http path of the hub defaults to: https://hub.gig.tech/', default='https://hub.gig.tech/')
+@click.option('-d', '--destination', help='Destination directory', required=True)
+def sync_metadata(url, destination):
+    for item in _sync_metadata(url, destination):
+        yield item
+
+
+def _sync_metadata(url, destination):
+    data = requests.get(url + 'api/list').text
+    for path in data.splitlines():
+        path = path.strip()
+        if path:
+            dpath = os.path.join(destination, path)
+            furl = url + path
+            if not os.path.exists(dpath):
+                print('Flist {} does not exists downloading...'.format(path))
+                download(furl, dpath)
+                yield dpath
+            else:
+                localmd5 = hashlib.md5()
+                with open(dpath, 'rb') as fl:
+                    localmd5.update(fl.read())
+                remotemd5 = requests.get(url + path + '.md5').content.strip().decode('utf8')
+                if remotemd5 != localmd5.hexdigest():
+                    print('Flist {} md5sum mismatch downloading...'.format(path))
+                    download(furl, dpath)
+                    yield dpath
+                else:
+                    print('Flist {} exists and is uptodate'.format(path))
+
+
+@sync.command('all', help="Sync flist metadata and data to local ardb")
+@click.option('-u', '--url', help='http path of the hub defaults to: https://hub.gig.tech/', default='https://hub.gig.tech/')
+@click.option('-d', '--destination', help='Destination directory', required=True)
+@click.option('-m', '--master', help='Master ARDB host', default='hub.gig.tech')
+@click.option('-mp', '--master-port', help='Master ARDB port', type=int, default=16379)
+@click.option('-md', '--master-db', help='Master ARDB db index', type=int, default=0)
+@click.option('-s', '--slave', help='Salve ARDB host', required=True)
+@click.option('-sp', '--slave-port', help='Slave ARDB port', type=int, default=16379)
+@click.option('-sd', '--slave-db', help='Slave ARDB db index', type=int, default=0)
+def fullsync(url, destination, master, master_port, master_db, slave, slave_port, slave_db):
+    for flist in _sync_metadata(url, destination):
+        _sync_data(flist, master, master_port, master_db, slave, slave_port, slave_db)
+
+
+@sync.command('data', help="sync flist data to local ardb")
+@click.option('-f', '--filepath', help='Directory or file containing flist to sync data for')
+@click.option('-m', '--master', help='Master ARDB host', default='hub.gig.tech')
+@click.option('-mp', '--master-port', help='Master ARDB port', type=int, default=16379)
+@click.option('-md', '--master-db', help='Master ARDB db index', type=int, default=0)
+@click.option('-s', '--slave', help='Slave ARDB host', required=True)
+@click.option('-sp', '--slave-port', help='Slave ARDB port', type=int, default=16379)
+@click.option('-sd', '--slave-db', help='Slave ARDB db index', type=int, default=0)
+def sync_data(filepath, master, master_port, master_db, slave, slave_port, slave_db):
+    return _sync_data(filepath, master, master_port, master_db, slave, slave_port, slave_db)
+
+
+def _sync_data(filepath, master, master_port, master_db, slave, slave_port, slave_db):
+    import redis
+    master = redis.Redis(master, master_port, master_db)
+    slave = redis.Redis(slave, slave_port, slave_db)
+
+    def syncflist(path):
+        tmpdir = j.sal.fs.getTmpDirPath()
+        dbtemp = '%s.db' % tmpdir
+        try:
+            os.mkdir(dbtemp)
+            t = tarfile.open(path, "r:*")
+            t.extractall(path=dbtemp)
+            t.close()
+            kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
+            f = j.tools.flist.getFlist(rootpath=tmpdir, kvs=kvs)
+
+            def procDir(dirobj, type, name, args, key):
+                pass
+
+            def procFile(dirobj, type, name, subobj, args):
+                print("Syncing %s %s/%s\r" % (path, args['current'], args['nrfiles']), end='')
+                for block in subobj.attributes.file.blocks:
+                    if not slave.exists(block.hash):
+                        data = master.dump(block.hash)
+                        slave.restore(block.hash, 0, data)
+                args['current'] += 1
+
+            def procLink(dirobj, type, name, subobj, args):
+                pass
+
+            def procSpecial(dirobj, type, name, subobj, args):
+                pass
+
+            # just for counting files
+            counter = {
+                'nrfiles': f.count()[1],
+                'current': 1
+            }
+            f.walk(
+                dirFunction=procDir,
+                fileFunction=procFile,
+                specialFunction=procSpecial,
+                linkFunction=procLink,
+                args=counter
+            )
+            print('')
+        finally:
+            shutil.rmtree(dbtemp)
+            shutil.rmtree(tmpdir)
+
+    if os.path.isdir(filepath):
+        for path in j.sal.fs.listFilesInDir(filepath, True, '*.flist'):
+            syncflist(path)
+    elif os.path.isfile(filepath):
+        syncflist(filepath)
+
+
+if __name__ == '__main__':
+    cli()
