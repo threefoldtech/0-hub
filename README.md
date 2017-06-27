@@ -27,4 +27,4 @@ This is the repository for the Zero-OS Hub website. It contains all the source c
 
 ## Documentation
 
-For more documentation see the [`/docs`](./docs) directory.
+For more documentation see the [`/docs`](/docs) directory.
