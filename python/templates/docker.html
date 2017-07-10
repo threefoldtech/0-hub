@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}GIG Hub{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Docker Hub Converter</h1>
+        <p>With this tool, you can convert an existing docker image to our hub and uses it out-of-box with our container system.</p>
+    </div>
+</div>
+
+<div class="container">
+    <ol class="breadcrumb">
+        <li><a href="/">Repositories</a></li>
+        <li class="active">Docker converter</li>
+    </ol>
+
+    <div id="progress" style="display: none;">
+        <h2>Converting... please wait.</h2>
+        <div class="progress">
+        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+        </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        <strong>Oops:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div id="home" style="display: block;">
+
+    <form class="form-horizontal" method="post" action="/docker">
+    <h2>Type the docker image you want to convert</h2>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Docker Image</label>
+        <div class="col-sm-10">
+            <input type="text" class="form-control" placeholder="ububtu:16.04" name="docker-input" id="docker-input">
+        </div>
+    </div>
+
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label"></label>
+        <div class="col-sm-10">
+            <button type="submit" class="btn btn-success" onclick="uploadStarted()">Convert the docker image</button>
+        </div>
+    </div>
+    </form>
+
+    </div>
+</div>
+
+<script type="text/javascript">
+document.getElementById("docker-input").focus();
+
+function uploadStarted() {
+    document.getElementById("progress").style.display = "block";
+    document.getElementById("home").style.display = "none";
+}
+</script>
+{% endblock %}

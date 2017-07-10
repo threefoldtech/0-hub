@@ -6,11 +6,16 @@ import datetime
 import json
 import hashlib
 import tempfile
+import redis
+import g8storclient
+import docker
+import uuid
+import subprocess
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
-from JumpScale import j
+from js9 import j
 from config import config
 
 #
@@ -23,6 +28,8 @@ UPLOAD_FOLDER = os.path.join(BASEPATH, "workdir/distfiles")
 FLIST_TEMPDIR = os.path.join(BASEPATH, "workdir/temp")
 PUBLIC_FOLDER = os.path.join(BASEPATH, "public/users/")
 ALLOWED_EXTENSIONS = set(['.tar.gz'])
+
+dockerclient = docker.from_env()
 
 print("[+] upload directory: %s" % UPLOAD_FOLDER)
 print("[+] flist creation  : %s" % FLIST_TEMPDIR)
@@ -86,6 +93,41 @@ def mkflist(directory, target):
     #
     return True
 
+def handle_flist_upload(f):
+    f.populate()
+
+    r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
+    def procDir(dirobj, type, name, args, key):
+        pass
+
+    def procLink(dirobj, type, name, subobj, args):
+        pass
+
+    def procSpecial(dirobj, type, name, subobj, args):
+        pass
+
+    def procFile(dirobj, type, name, subobj, args):
+        fullpath = "%s/%s/%s" % (f.rootpath, dirobj.dbobj.location, name)
+        print("[+] uploading: %s" % fullpath)
+        hashs = g8storclient.encrypt(fullpath)
+
+        if hashs is None:
+            return
+
+        for hash in hashs:
+            if not r.exists(hash['hash']):
+                r.set(hash['hash'], hash['data'])
+
+    print("[+] uploading contents")
+    result = []
+    f.walk(
+        dirFunction=procDir,
+        fileFunction=procFile,
+        specialFunction=procSpecial,
+        linkFunction=procLink,
+        args=result
+    )
+
 def handle_flist(filepath, filename):
     username = request.environ['username']
 
@@ -113,10 +155,13 @@ def handle_flist(filepath, filename):
     #
     dbtemp = '%s.db' % target
 
-    kvs = j.servers.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
+    print("[+] preparing flist")
+    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
     f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
     f.add(target, excludes=[".*\.pyc", ".*__pycache__"])
-    f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
+
+    handle_flist_upload(f)
+    # f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
 
     #
     # creating the flist archive
@@ -145,6 +190,57 @@ def handle_flist(filepath, filename):
     # rendering summary page
     #
     return uploadSuccess(flistname, filescount, home)
+
+def handle_docker_import(dockerimage):
+    dockername = uuid.uuid4().hex
+    print("[+] temporary docker name: %s" % dockername)
+
+    if ":" not in dockerimage:
+        dockerimage = "%s:latest" % dockerimage
+
+    print("[+] pulling image: %s" % dockerimage)
+    image = dockerclient.images.pull(dockerimage)
+
+    print("[+] starting temporary container")
+    cn = dockerclient.containers.create(dockerimage, name=dockername, hostname=dockername)
+
+    print("[+] creating target directory")
+    tmpdir = tempfile.TemporaryDirectory(prefix=dockername)
+
+    print("[+] dumping files to: %s" % tmpdir.name)
+    subprocess.call(['sh', '-c', 'docker export %s | tar -xpf - -C %s' % (dockername, tmpdir.name)])
+
+    print("[+] parsing the flist")
+    flistdir = tempfile.TemporaryDirectory(prefix="flist-db-%s" % dockername)
+    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=flistdir.name)
+    f = j.tools.flist.getFlist(rootpath=tmpdir.name, kvs=kvs)
+    f.add(tmpdir.name, excludes=[".*\.pyc", ".*__pycache__"])
+
+    handle_flist_upload(f)
+
+    print("[+] creating the flist file")
+    home = os.path.join(PUBLIC_FOLDER, "dockers")
+    if not os.path.exists(home):
+        os.mkdir(home)
+
+    flistname = "%s.flist" % dockerimage.replace(":", "-")
+    dbpath = os.path.join(home, flistname)
+
+    if not mkflist(flistdir.name, dbpath):
+        return "Someting went wrong, please contact support to report this issue."
+
+    print("[+] cleaning temporary files")
+    tmpdir.cleanup()
+    flistdir.cleanup()
+
+    print("[+] destroying the container")
+    cn.remove(force=True)
+
+    print("[+] cleaning up the docker image")
+    dockerclient.images.remove(dockerimage, force=True)
+
+    variables = {}
+    return uploadSuccess(dockerimage, 0, home)
 
 def handle_merge(sources, targetname):
     status = flist_merging(sources, targetname)
@@ -445,6 +541,22 @@ def flist_merge():
     # Merge page
     variables = {}
     return globalTemplate("merge.html", variables)
+
+@app.route('/docker', methods=['GET', 'POST'])
+def docker_handler():
+    if not request.environ['username']:
+        return "Access denied."
+
+    if request.method == 'POST':
+        if not request.form.get("docker-input"):
+            variables = {'error': "Missing docker image name"}
+            return globalTemplate("docker.html", variables)
+
+        return handle_docker_import(request.form.get("docker-input"))
+
+    # Docker page
+    variables = {}
+    return globalTemplate("docker.html", variables)
 
 def flist_merge_post():
     data = {}
