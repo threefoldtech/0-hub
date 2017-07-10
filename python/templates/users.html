@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block title %}GIG Hub{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Hello you !</h1>
+        <p>Do you want to publish your g8os flist to our hub? It's easy.</p>
+        <p>All you need is a <code>.tar.gz</code> archive of your files and upload it here. Simple.</p>
+        <p><a class="btn btn-primary btn-lg" href="/upload" role="button">Upload my file</a></p>
+    </div>
+</div>
+
+<div class="container">
+<div id="home" style="display: block;">
+    <h2>Official Repositories</h2>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <td style="width: 50%;">Repository</td>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for username in officials %}
+        <tr class="warning">
+            <td>
+                <span class="glyphicon glyphicon-certificate" style="color: #008000; margin-right: 5px;"></span>
+                <a href="/{{ username }}/">{{ username }}</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Contributors</h2>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <td style="width: 50%;">Username</td>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for username in contributors %}
+        <tr>
+            <td>
+                <span class="glyphicon glyphicon-certificate" style="color: #ADD8E6; margin-right: 5px;"></span>
+                <a href="{{ username }}/">{{ username }}</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

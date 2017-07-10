@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block title %}GIG Hub{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron">
+    <div class="container">
+        <ol class="breadcrumb">
+            <li><a href="/">Repositories</a></li>
+            <li><a href="/{{ targetuser }}/">{{ targetuser }}</a></li>
+            <li class="active">{{ flistname }}</li>
+        </ol>
+
+        <h1>{{ flistname }}</h1>
+        <p>
+            This archive was uploaded by <code>{{ targetuser }}</code>.
+
+            <h3>Source File</h3>
+            <pre>{{ flisturl }}</pre>
+
+            <h3>Storage Address</h3>
+            <pre>{{ ardbhost }}</pre>
+
+            <h3>Archive Checksum (MD5)</h3>
+            <pre>{{ checksum }}</pre>
+        </p>
+        <!--
+        <h2>Contents</h2>
+        <pre>Coming soon...</pre>
+        -->
+
+        <!-- <p>For your information, we found <code>{{ filescount }} files</code> in your archive.</p> -->
+    </div>
+</div>
+{% endblock %}
