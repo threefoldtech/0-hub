@@ -11,6 +11,7 @@ import g8storclient
 import docker
 import uuid
 import subprocess
+import pytoml as toml
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
@@ -68,6 +69,11 @@ def globalTemplate(filename, args):
 
 def mkflist(directory, target):
     #
+    # Precision: since 'compact_range', this is probably
+    # not needed anymore, but need more tests to confirm.
+    #
+
+    #
     # UGLY WORKAROUND
     # No way to check if rocksdb have finished yet
     # We waits until tar was correctly able to pack stuff
@@ -81,7 +87,10 @@ def mkflist(directory, target):
                 tar.add(directory, arcname="")
 
             notGood = False
-        except FileNotFoundError:
+
+        except FileNotFoundError as e:
+            print("Workaround, not good")
+            print(e)
             time.sleep(0.1)
             pass
 
@@ -94,7 +103,15 @@ def mkflist(directory, target):
     return True
 
 def handle_flist_upload(f):
+    print("[+] populating contents")
     f.populate()
+
+    # this is a workaround to ensure file are written
+    # and not in a unstable state
+    # this access 'protected' class member, this should be
+    # improved
+    print("[+] compacting db")
+    f.dirCollection._db.rocksdb.compact_range()
 
     r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
     def procDir(dirobj, type, name, args, key):
@@ -199,16 +216,46 @@ def handle_docker_import(dockerimage):
         dockerimage = "%s:latest" % dockerimage
 
     print("[+] pulling image: %s" % dockerimage)
-    image = dockerclient.images.pull(dockerimage)
+    try:
+        image = dockerclient.images.pull(dockerimage)
+
+    except docker.errors.ImageNotFound:
+        variables = {'error': "Docker image not found"}
+        return globalTemplate("docker.html", variables)
+
+    command = None
+
+    if not image.attrs['Config']['Cmd'] and not image.attrs['Config']['Entrypoint']:
+        command = "/bin/sh"
 
     print("[+] starting temporary container")
-    cn = dockerclient.containers.create(dockerimage, name=dockername, hostname=dockername)
+    cn = dockerclient.containers.create(dockerimage, name=dockername, hostname=dockername, command=command)
 
     print("[+] creating target directory")
     tmpdir = tempfile.TemporaryDirectory(prefix=dockername)
 
     print("[+] dumping files to: %s" % tmpdir.name)
     subprocess.call(['sh', '-c', 'docker export %s | tar -xpf - -C %s' % (dockername, tmpdir.name)])
+
+    print("[+] creating container entrypoint")
+    command = []
+    args = []
+
+    if cn.attrs['Config']['Entrypoint']:
+        command = cn.attrs['Config']['Entrypoint'][0]
+        args = cn.attrs['Config']['Cmd']
+
+    else:
+        command = cn.attrs['Config']['Cmd'][0]
+        args = cn.attrs['Config']['Cmd'][1:]
+
+    boot = {
+        'startup.entry':      {'name': "core.system", 'running_delay': -1},
+        'startup.entry.args': {'name': command, 'args': args}
+    }
+
+    with open(os.path.join(tmpdir.name, '.startup.toml'), 'w') as f:
+        f.write(toml.dumps(boot))
 
     print("[+] parsing the flist")
     flistdir = tempfile.TemporaryDirectory(prefix="flist-db-%s" % dockername)
@@ -223,7 +270,7 @@ def handle_docker_import(dockerimage):
     if not os.path.exists(home):
         os.mkdir(home)
 
-    flistname = "%s.flist" % dockerimage.replace(":", "-")
+    flistname = "%s.flist" % dockerimage.replace(":", "-").replace('/', '-')
     dbpath = os.path.join(home, flistname)
 
     if not mkflist(flistdir.name, dbpath):
@@ -240,7 +287,7 @@ def handle_docker_import(dockerimage):
     dockerclient.images.remove(dockerimage, force=True)
 
     variables = {}
-    return uploadSuccess(dockerimage, 0, home)
+    return uploadSuccess(flistname, 0, home, "dockers")
 
 def handle_merge(sources, targetname):
     status = flist_merging(sources, targetname)
@@ -303,8 +350,11 @@ def flist_merging(sources, targetname):
     return True
 
 
-def uploadSuccess(flistname, filescount, home):
-    username = request.environ['username']
+def uploadSuccess(flistname, filescount, home, username=None):
+    print(username)
+    if username is None:
+        username = request.environ['username']
+
     settings = {
         'username': username,
         'flistname': flistname,
@@ -542,7 +592,7 @@ def flist_merge():
     variables = {}
     return globalTemplate("merge.html", variables)
 
-@app.route('/docker', methods=['GET', 'POST'])
+@app.route('/docker-convert', methods=['GET', 'POST'])
 def docker_handler():
     if not request.environ['username']:
         return "Access denied."

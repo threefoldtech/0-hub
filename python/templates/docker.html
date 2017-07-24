@@ -23,15 +23,15 @@
         </div>
     </div>
 
+    <div id="home" style="display: block;">
+
     {% if error %}
     <div class="alert alert-danger" role="alert">
         <strong>Oops:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <div id="home" style="display: block;">
-
-    <form class="form-horizontal" method="post" action="/docker">
+    <form class="form-horizontal" method="post" action="/docker-convert">
     <h2>Type the docker image you want to convert</h2>
 
     <div class="form-group">
