@@ -574,6 +574,29 @@ def api_list():
 
     return response
 
+@app.route('/api/rename/<source>/<destination>')
+def api_rename(source, destination):
+    if not request.environ['username']:
+        return "Access denied."
+
+    if not destination.endswith(".flist"):
+        return "Invalid destination name"
+
+    username = request.environ['username']
+    target = os.path.join(PUBLIC_FOLDER, username)
+
+    if not os.path.isdir(target):
+        return "User not found"
+
+    sourcefile = os.path.join(target, source)
+    if not os.path.isfile(sourcefile):
+        return "Source not found"
+
+    destfile = os.path.join(target, destination)
+    os.rename(sourcefile, destfile)
+
+    return "OK"
+
 @app.route('/merge', methods=['GET', 'POST'])
 def flist_merge():
     if not request.environ['username']:
