@@ -1,5 +1,7 @@
 0.0.0.0:2015
 
+timeouts 30m
+
 log stdout
 root public
 
