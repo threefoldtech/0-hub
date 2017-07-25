@@ -67,6 +67,12 @@ def globalTemplate(filename, args):
     args['debug'] = config['DEBUG']
     return render_template(filename, **args)
 
+def dummy1(dirobj, type, name, args, key):
+    pass
+
+def dummy2(dirobj, type, name, subobj, args):
+    pass
+
 def mkflist(directory, target):
     #
     # Precision: since 'compact_range', this is probably
@@ -114,15 +120,6 @@ def handle_flist_upload(f):
     f.dirCollection._db.rocksdb.compact_range()
 
     r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
-    def procDir(dirobj, type, name, args, key):
-        pass
-
-    def procLink(dirobj, type, name, subobj, args):
-        pass
-
-    def procSpecial(dirobj, type, name, subobj, args):
-        pass
-
     def procFile(dirobj, type, name, subobj, args):
         fullpath = "%s/%s/%s" % (f.rootpath, dirobj.dbobj.location, name)
         print("[+] uploading: %s" % fullpath)
@@ -138,10 +135,10 @@ def handle_flist_upload(f):
     print("[+] uploading contents")
     result = []
     f.walk(
-        dirFunction=procDir,
+        dirFunction=dummy1,
         fileFunction=procFile,
-        specialFunction=procSpecial,
-        linkFunction=procLink,
+        specialFunction=dummy2,
+        linkFunction=dummy2,
         args=result
     )
 
@@ -288,6 +285,62 @@ def handle_docker_import(dockerimage):
 
     variables = {}
     return uploadSuccess(flistname, 0, home, "dockers")
+
+def handle_existing_flist(filepath, filename):
+    username = request.environ['username']
+
+    #
+    # checking and extracting files
+    #
+    target = os.path.join(FLIST_TEMPDIR, filename)
+    if os.path.exists(target):
+        return internalRedirect("upload-flist.html", "We are already processing this file.")
+
+    os.mkdir(target)
+
+    print("[+] extracting database")
+    t = tarfile.open(filepath, "r:gz")
+    t.extractall(path=target)
+    t.close()
+
+    #
+    # parsing database
+    #
+    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=target)
+    f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
+
+    r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
+    pipe = r.pipeline()
+
+    def procFile(dirobj, type, name, subobj, args):
+        for chunk in subobj.attributes.file.blocks:
+            rkey = chunk.hash.decode('utf-8')
+            pipe.exists(rkey)
+
+    result = []
+    f.walk(
+        dirFunction=dummy1,
+        fileFunction=procFile,
+        specialFunction=dummy2,
+        linkFunction=dummy2,
+        args=result
+    )
+
+    result = pipe.execute()
+    shutil.rmtree(target)
+
+    if False in result:
+        os.unlink(filepath)
+        return internalRedirect("upload-flist.html", "Sorry, some files was not found in the backend.")
+
+    home = os.path.join(PUBLIC_FOLDER, username)
+    if not os.path.exists(home):
+        os.mkdir(home)
+
+    dbpath = os.path.join(home, filename)
+    os.rename(filepath, dbpath)
+
+    return uploadSuccess(filename, 0, home)
 
 def handle_merge(sources, targetname):
     status = flist_merging(sources, targetname)
