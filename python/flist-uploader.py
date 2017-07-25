@@ -153,7 +153,7 @@ def handle_flist(filepath, filename):
     #
     target = os.path.join(FLIST_TEMPDIR, filename)
     if os.path.exists(target):
-        return uploadError("We are already processing this file.")
+        return internalRedirect("upload.html", "We are already processing this file.")
 
     os.mkdir(target)
 
@@ -351,7 +351,6 @@ def flist_merging(sources, targetname):
 
 
 def uploadSuccess(flistname, filescount, home, username=None):
-    print(username)
     if username is None:
         username = request.environ['username']
 
@@ -365,18 +364,15 @@ def uploadSuccess(flistname, filescount, home, username=None):
 
     return globalTemplate("success.html", settings)
 
-def uploadError(errstr):
+def internalRedirect(target, error=None):
     settings = {
         'username': request.environ['username'],
-        'error': errstr
     }
 
-    return globalTemplate("upload.html", settings)
+    if error:
+        settings['error'] = error
 
-def uploadDefault():
-    settings = {'username': request.environ['username']}
-
-    return globalTemplate("upload.html", settings)
+    return globalTemplate(target, settings)
 
 
 #
@@ -408,14 +404,14 @@ def upload_file():
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
-            return uploadError("No file found")
+            return internalRedirect("upload.html", "No file found")
 
         file = request.files['file']
 
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
-            return uploadError("No file selected")
+            return internalRedirect("upload.html", "No file selected")
 
         print(file.filename)
         if file and allowed_file(file.filename):
@@ -428,9 +424,41 @@ def upload_file():
             return handle_flist(target, filename)
 
         else:
-            return uploadError("This file is not allowed.")
+            return internalRedirect("upload.html", "This file is not allowed.")
 
-    return uploadDefault()
+    return internalRedirect("upload.html")
+
+@app.route('/upload-flist', methods=['GET', 'POST'])
+def upload_file_flist():
+    if not request.environ['username']:
+        return "Access denied."
+
+    if request.method == 'POST':
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            return internalRedirect("upload-flist.html", "No file found")
+
+        file = request.files['file']
+
+        # if user does not select file, browser also
+        # submit a empty part without filename
+        if file.filename == '':
+            return internalRedirect("upload-flist.html", "No file selected")
+
+        print(file.filename)
+        if file and file.filename.endswith(".flist"):
+            filename = secure_filename(file.filename)
+
+            print("[+] saving file")
+            target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(target)
+
+            return handle_existing_flist(target, filename)
+
+        else:
+            return internalRedirect("upload-flist.html", "This file is not allowed.")
+
+    return internalRedirect("upload-flist.html")
 
 @app.route('/')
 def show_users():
@@ -606,14 +634,12 @@ def flist_merge():
         data = flist_merge_post()
 
         if data['error']:
-            variables = {'error': data['error']}
-            return globalTemplate("merge.html", variables)
+            return internalRedirect("merge.html", data['error'])
 
         return handle_merge(data['sources'], data['targetname'])
 
     # Merge page
-    variables = {}
-    return globalTemplate("merge.html", variables)
+    return internalRedirect("merge.html")
 
 @app.route('/docker-convert', methods=['GET', 'POST'])
 def docker_handler():
@@ -622,14 +648,12 @@ def docker_handler():
 
     if request.method == 'POST':
         if not request.form.get("docker-input"):
-            variables = {'error': "Missing docker image name"}
-            return globalTemplate("docker.html", variables)
+            return internalRedirect("docker.html", "Missing docker image name")
 
         return handle_docker_import(request.form.get("docker-input"))
 
     # Docker page
-    variables = {}
-    return globalTemplate("docker.html", variables)
+    return internalRedirect("docker.html")
 
 def flist_merge_post():
     data = {}
