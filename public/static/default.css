@@ -12,9 +12,13 @@ table thead tr {
     line-height: 50px;
     font-size: 21px;
     text-align: center;
-    border-top: dashed 1px #1E90FF;
-    border-bottom: dashed 1px #1E90FF;
-    background: #ADD8E6;
+    animation: kdebug 2s infinite;
+}
+
+@keyframes kdebug {
+    0% { background-color: #AEDBEA; color: #000000; }
+    50% { background-color: #4793AB; color: #FFFFFF; }
+    100% { background-color: #AEDBEA; color: #000000; }
 }
 
 .jumbotron {
