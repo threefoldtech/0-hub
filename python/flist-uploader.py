@@ -319,7 +319,7 @@ def flist_merging(sources, targetname):
         t.extractall(path=workdir.name)
         t.close()
 
-        kvs = j.servers.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=workdir.name)
+        kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=workdir.name)
         kdb = j.tools.flist.getFlist(rootpath=workdir.name, kvs=kvs)
         merger.add_source(kdb)
 
@@ -333,7 +333,7 @@ def flist_merging(sources, targetname):
     # Merging sources
     #
     target = tempfile.TemporaryDirectory(prefix="merge-target-")
-    kvs = j.servers.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
+    kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
     ktarget = j.tools.flist.getFlist(rootpath='/', kvs=kvs)
 
     merger.add_destination(ktarget)
