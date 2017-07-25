@@ -625,6 +625,25 @@ def api_rename(source, destination):
 
     return "OK"
 
+@app.route('/api/delete/<source>')
+def api_delete(source):
+    if not request.environ['username']:
+        return "Access denied."
+
+    username = request.environ['username']
+    target = os.path.join(PUBLIC_FOLDER, username)
+
+    if not os.path.isdir(target):
+        return "User not found"
+
+    sourcefile = os.path.join(target, source)
+    if not os.path.isfile(sourcefile):
+        return "Source not found"
+
+    os.unlink(sourcefile)
+
+    return "OK"
+
 @app.route('/merge', methods=['GET', 'POST'])
 def flist_merge():
     if not request.environ['username']:
