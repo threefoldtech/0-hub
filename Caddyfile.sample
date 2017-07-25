@@ -11,7 +11,11 @@ oauth {
     redirect_url    http://__HOST__/_iyo_callback
 
     authentication_required    /upload
+    authentication_required    /upload-flist
     authentication_required    /merge
+    authentication_required    /docker-convert
+    authentication_required    /api/rename
+    authentication_required    /api/delete
 }
 
 proxy / __PYTHON_HOST__:5000 {
