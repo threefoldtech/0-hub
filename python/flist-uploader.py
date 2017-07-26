@@ -402,6 +402,52 @@ def flist_merging(sources, targetname):
 
     return True
 
+def flist_listing(source):
+    target = tempfile.TemporaryDirectory(prefix="listing-")
+
+    print("[+] Unpacking flist database")
+    t = tarfile.open(source, "r:gz")
+    t.extractall(path=target.name)
+    t.close()
+
+    kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
+    ktarget = j.tools.flist.getFlist(rootpath='/', kvs=kvs)
+
+    contents = {
+        'content': [],
+        'regular': 0,
+        'directory': 0,
+        'symlink': 0,
+        'special': 0
+    }
+
+    def procDir(dirobj, type, name, args, key):
+        contents['directory'] += 1
+        contents['content'].append({'path': "%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+
+    def procSpecial(dirobj, type, name, subobj, args):
+        contents['special'] += 1
+        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+
+    def procFile(dirobj, type, name, subobj, args):
+        contents['regular'] += 1
+        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': dirobj.dbobj.size})
+
+    def procLink(dirobj, type, name, subobj, args):
+        contents['symlink'] += 1
+        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+
+    print("[+] parsing database")
+    result = []
+    ktarget.walk(
+        dirFunction=procDir,
+        fileFunction=procFile,
+        specialFunction=procSpecial,
+        linkFunction=procLink,
+        args=result
+    )
+
+    return contents
 
 def uploadSuccess(flistname, filescount, home, username=None):
     if username is None:
@@ -652,6 +698,24 @@ def api_list():
 
     response = make_response("\n".join(output) + "\n")
     response.headers["Content-Type"] = "text/plain"
+
+    return response
+
+@app.route('/api/inspect/<username>/<flist>')
+def api_inspect(username, flist):
+    target = os.path.join(PUBLIC_FOLDER, username)
+
+    if not os.path.isdir(target):
+        return "User not found"
+
+    sourcefile = os.path.join(target, flist)
+    if not os.path.isfile(sourcefile):
+        return "Source not found"
+
+    contents = flist_listing(sourcefile)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
 
     return response
 
