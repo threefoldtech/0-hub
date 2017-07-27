@@ -392,7 +392,11 @@ def flist_merging(sources, targetname):
     merger.add_destination(ktarget)
     merger.merge()
 
-    flist = os.path.join(PUBLIC_FOLDER, username, targetname)
+    home = os.path.join(PUBLIC_FOLDER, username)
+    if not os.path.exists(home):
+        os.mkdir(home)
+
+    flist = os.path.join(home, targetname)
 
     #
     # Release new build
