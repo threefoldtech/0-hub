@@ -33,7 +33,7 @@ In order to run the hub correctly, you need some dependencies:
 - The modules needed by the webservice:
   - `pip3 install -r requirements.txt`
 - Install Jumpscale and it's dependencies:
-  - `apt-get install git curl ssh`
+  - `apt-get install git curl ssh docker.io`
   - `pip3 install -e git+https://github.com/jumpscale/core9#egg=jumpscale9`
   - `pip3 install -e git+https://github.com/jumpscale/lib9#egg=jumpscale9lib`
 - Grab a `caddy` version which supports `itsyouonline-oauth` [caddy-integration](https://github.com/itsyouonline/caddy-integration)
