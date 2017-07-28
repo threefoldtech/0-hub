@@ -73,6 +73,11 @@ def dummy1(dirobj, type, name, args, key):
 def dummy2(dirobj, type, name, subobj, args):
     pass
 
+######################################
+#
+# ACTIONS IMPLEMENTATION
+#
+######################################
 def mkflist(directory, target):
     #
     # Precision: since 'compact_range', this is probably
@@ -478,6 +483,29 @@ def internalRedirect(target, error=None):
     return globalTemplate(target, settings)
 
 
+def flist_merge_post():
+    data = {}
+    data['error'] = None
+
+    data['sources'] = request.form.getlist('flists[]')
+    if len(data['sources']) == 0:
+        data['error'] = "No source selected"
+        return data
+
+    data['targetname'] = request.form['name']
+    if not data['targetname']:
+        data['error'] = "Missing build name"
+        return data
+
+    if "/" in data['targetname']:
+        data['error'] = "Build name not allowed"
+        return data
+
+    if not data['targetname'].endswith('.flist'):
+        data['targetname'] += '.flist'
+
+    return data
+
 #
 # flist operation
 #
@@ -496,9 +524,11 @@ def flist_md5(username, flistname):
 
     return hash_md5.hexdigest()
 
+######################################
 #
-# navigation
+# ROUTING ACTIONS
 #
+######################################
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     if not request.environ['username']:
@@ -563,6 +593,41 @@ def upload_file_flist():
 
     return internalRedirect("upload-flist.html")
 
+@app.route('/merge', methods=['GET', 'POST'])
+def flist_merge():
+    if not request.environ['username']:
+        return "Access denied."
+
+    if request.method == 'POST':
+        data = flist_merge_post()
+
+        if data['error']:
+            return internalRedirect("merge.html", data['error'])
+
+        return handle_merge(data['sources'], data['targetname'])
+
+    # Merge page
+    return internalRedirect("merge.html")
+
+@app.route('/docker-convert', methods=['GET', 'POST'])
+def docker_handler():
+    if not request.environ['username']:
+        return "Access denied."
+
+    if request.method == 'POST':
+        if not request.form.get("docker-input"):
+            return internalRedirect("docker.html", "Missing docker image name")
+
+        return handle_docker_import(request.form.get("docker-input"))
+
+    # Docker page
+    return internalRedirect("docker.html")
+
+######################################
+#
+# ROUTING NAVIGATION
+#
+######################################
 @app.route('/')
 def show_users():
     dirs = sorted(os.listdir(PUBLIC_FOLDER))
@@ -609,10 +674,6 @@ def show_user(username):
         })
 
     return globalTemplate("user.html", variables)
-
-#
-# flist request
-#
 
 @app.route('/<username>/<flist>.md')
 def show_flist_md(username, flist):
@@ -684,6 +745,11 @@ def checksum_flist(username, flist):
 
     return response
 
+######################################
+#
+# ROUTING API
+#
+######################################
 @app.route('/api/list')
 def api_list():
     root = sorted(os.listdir(PUBLIC_FOLDER))
@@ -765,58 +831,10 @@ def api_delete(source):
 
     return "OK"
 
-@app.route('/merge', methods=['GET', 'POST'])
-def flist_merge():
-    if not request.environ['username']:
-        return "Access denied."
-
-    if request.method == 'POST':
-        data = flist_merge_post()
-
-        if data['error']:
-            return internalRedirect("merge.html", data['error'])
-
-        return handle_merge(data['sources'], data['targetname'])
-
-    # Merge page
-    return internalRedirect("merge.html")
-
-@app.route('/docker-convert', methods=['GET', 'POST'])
-def docker_handler():
-    if not request.environ['username']:
-        return "Access denied."
-
-    if request.method == 'POST':
-        if not request.form.get("docker-input"):
-            return internalRedirect("docker.html", "Missing docker image name")
-
-        return handle_docker_import(request.form.get("docker-input"))
-
-    # Docker page
-    return internalRedirect("docker.html")
-
-def flist_merge_post():
-    data = {}
-    data['error'] = None
-
-    data['sources'] = request.form.getlist('flists[]')
-    if len(data['sources']) == 0:
-        data['error'] = "No source selected"
-        return data
-
-    data['targetname'] = request.form['name']
-    if not data['targetname']:
-        data['error'] = "Missing build name"
-        return data
-
-    if "/" in data['targetname']:
-        data['error'] = "Build name not allowed"
-        return data
-
-    if not data['targetname'].endswith('.flist'):
-        data['targetname'] += '.flist'
-
-    return data
-
+######################################
+#
+# PROCESSING
+#
+######################################
 print("[+] listening")
 app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
