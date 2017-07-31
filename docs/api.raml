@@ -1,0 +1,75 @@
+#%RAML 1.0
+title: 0-Hub REST API
+version: 1.0
+mediaType: application/json
+
+/flist:
+  get:
+    description: List all flist found, sorted alphabetically
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              [
+                "ahamdy/js9_ubuntu1.flist",
+                "chaddad/js9f.flist",
+                "gig-official-apps/ardb-forestdb.flist",
+                "gig-official-apps/ardb-lmdb.flist",
+                "xtremx/ubuntu_caddy.flist",
+                "zaibon/flist.flist"
+              ]
+
+  /{username}/{flist}:
+    get:
+      description: Get information about a specific flist
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  'content': [
+                    {"path": "/var/lib/dpkg/alternatives/view", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers", "size": 0},
+                    {"path": "/var/lib/dpkg/triggers/File", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers/resolvconf-enable-updates", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers/Lock", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers/ldconfig", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers/Unincorp", "size": 130},
+                    {"path": "/var/lib/dpkg/triggers/update-initramfs", "size": 130},
+                    ...
+                  ],
+                  'regular': 5,
+                  'directory': 3,
+                  'symlink': 4,
+                  'special': 2
+                }
+        404:
+
+  /me/{flist}:
+    delete:
+      description: Delete one of your flist
+      responses:
+        200:
+          description: Flist deleted
+        401:
+          description: Not authentificated
+        404:
+          description: Flist not found
+    get:
+      description: See flist get
+
+  /me/{flist}/rename/{target}:
+    get:
+      description: Rename one of your flist
+      responses:
+        200:
+          description: Flist renamed
+        401:
+          description: Not authentificated
+        404:
+          description: Flist not found
+
+
+
