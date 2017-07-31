@@ -750,7 +750,7 @@ def checksum_flist(username, flist):
 # ROUTING API
 #
 ######################################
-@app.route('/api/list')
+@app.route('/api/flist')
 def api_list():
     root = sorted(os.listdir(PUBLIC_FOLDER))
     output = []
@@ -766,12 +766,12 @@ def api_list():
         for flist in flists:
             output.append("%s/%s" % (user, flist))
 
-    response = make_response("\n".join(output) + "\n")
-    response.headers["Content-Type"] = "text/plain"
+    response = make_response(json.dumps(output) + "\n")
+    response.headers["Content-Type"] = "application/json"
 
     return response
 
-@app.route('/api/inspect/<username>/<flist>')
+@app.route('/api/flist/<username>/<flist>')
 def api_inspect(username, flist):
     target = os.path.join(PUBLIC_FOLDER, username)
 
@@ -789,7 +789,20 @@ def api_inspect(username, flist):
 
     return response
 
-@app.route('/api/rename/<source>/<destination>')
+@app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
+def api_my_flist(flist):
+    if not request.environ['username']:
+        return "Access denied."
+
+    username = request.environ['username']
+
+    if request.method == 'GET':
+        return api_inspect(username, flist)
+
+    if request.method == 'DELETE':
+        return api_delete(username, flist)
+
+@app.route('/api/flist/me/<source>/rename/<destination>')
 def api_rename(source, destination):
     if not request.environ['username']:
         return "Access denied."
@@ -812,12 +825,13 @@ def api_rename(source, destination):
 
     return "OK"
 
-@app.route('/api/delete/<source>')
-def api_delete(source):
-    if not request.environ['username']:
-        return "Access denied."
 
-    username = request.environ['username']
+######################################
+#
+# API IMPLEMENTATION
+#
+######################################
+def api_delete(username, source):
     target = os.path.join(PUBLIC_FOLDER, username)
 
     if not os.path.isdir(target):

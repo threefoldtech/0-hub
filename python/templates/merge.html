@@ -119,7 +119,7 @@ function getoptions() {
 }
 
 function lister(data) {
-    options = data.trim().split("\n");
+    options = data;
     $('.flist-list').html(getoptions());
 }
 
@@ -134,7 +134,7 @@ $(document).ready(function() {
         newmerge();
     });
 
-    $.get('/api/list', lister);
+    $.get('/api/flist', lister);
 });
 </script>
 {% endblock %}
