@@ -729,11 +729,11 @@ def api_inspect(username, flist):
     target = os.path.join(PUBLIC_FOLDER, username)
 
     if not os.path.isdir(target):
-        return api_response("User not found")
+        return api_response("User not found", 404)
 
     sourcefile = os.path.join(target, flist)
     if not os.path.isfile(sourcefile):
-        return api_response("Source not found")
+        return api_response("Source not found", 404)
 
     contents = api_listing(sourcefile)
 
@@ -745,7 +745,7 @@ def api_inspect(username, flist):
 @app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
 def api_my_flist(flist):
     if not request.environ['username']:
-        return api_response("Access denied")
+        return api_response("Access denied", 401)
 
     username = request.environ['username']
 
@@ -758,20 +758,20 @@ def api_my_flist(flist):
 @app.route('/api/flist/me/<source>/rename/<destination>')
 def api_rename(source, destination):
     if not request.environ['username']:
-        return api_response("Access denied")
+        return api_response("Access denied", 401)
 
     if not destination.endswith(".flist"):
-        return api_response("Invalid destination name")
+        return api_response("Invalid destination name", 400)
 
     username = request.environ['username']
     target = os.path.join(PUBLIC_FOLDER, username)
 
     if not os.path.isdir(target):
-        return api_response("User not found")
+        return api_response("User not found", 404)
 
     sourcefile = os.path.join(target, source)
     if not os.path.isfile(sourcefile):
-        return api_response("Source not found")
+        return api_response("Source not found", 404)
 
     destfile = os.path.join(target, destination)
     os.rename(sourcefile, destfile)
@@ -788,23 +788,23 @@ def api_delete(username, source):
     target = os.path.join(PUBLIC_FOLDER, username)
 
     if not os.path.isdir(target):
-        return api_response("User not found")
+        return api_response("User not found", 404)
 
     sourcefile = os.path.join(target, source)
     if not os.path.isfile(sourcefile):
-        return api_response("Source not found")
+        return api_response("Source not found", 404)
 
     os.unlink(sourcefile)
 
     return api_response()
 
-def api_response(error=None):
+def api_response(error=None, code=200):
     reply = {"status": "success"}
 
     if error:
         reply = {"status": "error", "message": error}
 
-    response = make_response(json.dumps(reply) + "\n")
+    response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
     return response
 
