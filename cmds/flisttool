@@ -58,6 +58,8 @@ def upload_ardb(filepath, host, port):
         f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
         f.add(target)
         f.upload(host, port)
+        basename = j.sal.fs.getBaseName(filepath.rsplit('.')[0])
+        j.sal.fs.targzCompress(dbtemp, '/tmp/{}.flist'.format(basename))
     finally:
         shutil.rmtree(target)
 
@@ -89,8 +91,8 @@ def sync_metadata(url, destination):
 
 
 def _sync_metadata(url, destination):
-    data = requests.get(url + 'api/list').text
-    for path in data.splitlines():
+    flists = requests.get(url + 'api/list').json()
+    for path in flists:
         path = path.strip()
         if path:
             dpath = os.path.join(destination, path)
