@@ -91,7 +91,7 @@ def sync_metadata(url, destination):
 
 
 def _sync_metadata(url, destination):
-    flists = requests.get(url + 'api/list').json()
+    flists = requests.get(url + 'api/flist').json()
     for path in flists:
         path = path.strip()
         if path:
