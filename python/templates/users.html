@@ -14,7 +14,7 @@
 <div class="container">
 <div id="home" style="display: block;">
     <h2>Official Repositories</h2>
-    <table class="table table-hover">
+    <table class="table table-hover" id="trusted">
         <thead>
             <tr>
                 <td style="width: 50%;">Repository</td>
@@ -22,19 +22,14 @@
         </thead>
 
         <tbody>
-        {% for username in officials %}
-        <tr class="warning">
-            <td>
-                <span class="glyphicon glyphicon-certificate" style="color: #008000; margin-right: 5px;"></span>
-                <a href="/{{ username }}/">{{ username }}</a>
-            </td>
+        <tr>
+            <td>Loading repositories...</td>
         </tr>
-        {% endfor %}
         </tbody>
     </table>
 
     <h2>Contributors</h2>
-    <table class="table table-hover">
+    <table class="table table-hover" id="contributors">
         <thead>
             <tr>
                 <td style="width: 50%;">Username</td>
@@ -42,15 +37,37 @@
         </thead>
 
         <tbody>
-        {% for username in contributors %}
         <tr>
-            <td>
-                <span class="glyphicon glyphicon-certificate" style="color: #ADD8E6; margin-right: 5px;"></span>
-                <a href="{{ username }}/">{{ username }}</a>
-            </td>
+            <td>Loading users...</td>
         </tr>
-        {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+function buildlist(repositories) {
+    $("#trusted tbody").empty()
+    $("#contributors tbody").empty();
+
+    for(var index in repositories) {
+        var repository = repositories[index];
+        var username = repository['name'];
+
+        var target = repository['official'] ? 'trusted' : 'contributors';
+        var trclass = repository['official'] ? 'warning' : '';
+
+        var span = $('<span>', {'class': 'glyphicon glyphicon-certificate ' + target});
+        var href = $('<a>', {'href': username}).html(username);
+        var tr = $('<tr>', {'class': trclass}).append($('<td>').append(span).append(href));
+
+        $('#' + target + ' tbody').append(tr);
+    }
+}
+
+$(document).ready(function() {
+    $.get("/api/repositories", function(data) {
+        buildlist(data);
+    });
+});
+</script>
 {% endblock %}

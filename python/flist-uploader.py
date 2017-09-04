@@ -2,7 +2,6 @@ import os
 import tarfile
 import shutil
 import time
-import datetime
 import json
 import hashlib
 import tempfile
@@ -583,24 +582,7 @@ def docker_handler():
 ######################################
 @app.route('/')
 def show_users():
-    dirs = sorted(os.listdir(PUBLIC_FOLDER))
-
-    variables = {
-        'officials': [],
-        'contributors': []
-    }
-
-    for dir in dirs:
-        if dir in config['PUBLIC_IGNORE']:
-            continue
-
-        if dir in config['PUBLIC_OFFICIALS']:
-            variables['officials'].append(dir)
-
-        else:
-            variables['contributors'].append(dir)
-
-    return globalTemplate("users.html", variables)
+    return globalTemplate("users.html", {})
 
 @app.route('/<username>')
 def show_user(username):
@@ -608,23 +590,7 @@ def show_user(username):
     if not os.path.exists(path):
         abort(404)
 
-    files = sorted(os.listdir(path))
-
-    variables = {
-        'targetuser': username,
-        'files': []
-    }
-
-    for file in files:
-        stat = os.stat(os.path.join(PUBLIC_FOLDER, username, file))
-
-        updated = datetime.datetime.fromtimestamp(int(stat.st_mtime))
-
-        variables['files'].append({
-            'name': file,
-            'size': "%.2f KB" % ((stat.st_size) / 1024),
-            'updated': updated,
-        })
+    variables = {'targetuser': username}
 
     return globalTemplate("user.html", variables)
 
@@ -720,6 +686,50 @@ def api_list():
             output.append("%s/%s" % (user, flist))
 
     response = make_response(json.dumps(output) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route('/api/repositories')
+def api_repositories():
+    root = sorted(os.listdir(PUBLIC_FOLDER))
+
+    output = []
+
+    for user in root:
+        target = os.path.join(PUBLIC_FOLDER, user)
+
+        # ignore files (eg: .keep file)
+        if not os.path.isdir(target):
+            continue
+
+        official = (user in config['PUBLIC_OFFICIALS'])
+        output.append({'name': user, 'official': official})
+
+    response = make_response(json.dumps(output) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route('/api/flist/<username>')
+def api_user_contents(username):
+    path = os.path.join(PUBLIC_FOLDER, username)
+    if not os.path.exists(path):
+        abort(404)
+
+    files = sorted(os.listdir(path))
+    contents = []
+
+    for file in files:
+        stat = os.stat(os.path.join(PUBLIC_FOLDER, username, file))
+
+        contents.append({
+            'name': file,
+            'size': "%.2f KB" % ((stat.st_size) / 1024),
+            'updated': int(stat.st_mtime),
+        })
+
+    response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
 
     return response

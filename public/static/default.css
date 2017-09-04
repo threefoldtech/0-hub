@@ -31,3 +31,23 @@ table thead tr {
     overflow-y: auto;
     overflow-x: auto;
 }
+
+.trusted {
+    color: #008000;
+    margin-right: 5px;
+}
+
+.contributors {
+    color: #ADD8E6;
+    margin-right: 5px;
+}
+
+table#files span.glyphicon-file {
+    color: #1A1A1A;
+    margin-right: 5px;
+}
+
+table#files span.glyphicon-eye-open {
+    color: #4D4D4D;
+    margin-right: 5px;
+}

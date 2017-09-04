@@ -19,7 +19,7 @@
 
 <div id="home" style="display: block;">
     <h2>/{{ targetuser }}/</h2>
-    <table class="table table-hover">
+    <table class="table table-hover" id="files">
         <thead>
             <tr>
                 <td style="width: 50%;">Name</td>
@@ -30,23 +30,41 @@
         </thead>
 
         <tbody>
-        {% for file in files %}
-        <tr>
-            <td>
-                <span class="glyphicon glyphicon-file" style="color: #1A1A1A;"></span>
-                <a href="/{{ targetuser }}/{{ file['name'] }}">{{ file['name'] }}</a>
-            </td>
-            <td>
-                <a href="/{{ targetuser }}/{{ file['name'] }}.md">
-                <span class="glyphicon glyphicon-eye-open" style="color: #4D4D4D;"></span>
-                </a>
-            </td>
-            <td>{{ file['size'] }}</td>
-            <td>{{ file['updated'] }}</td>
-        </tr>
-        {% endfor %}
+            <tr>
+                <td colspan="4">Loading files...</td>
+            </tr>
         </tbody>
     </table>
 </div>
 </div>
+
+<script>
+function buildlist(files, username) {
+    $("#files tbody").empty();
+
+    for(var index in files) {
+        var file = files[index];
+
+        var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
+        var seeicon = $('<span>', {'class': 'glyphicon glyphicon-eye-open'});
+
+        var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
+        var seelink = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+
+        var tr = $('<tr>');
+        tr.append($('<td>').append(fileicon).append(filelink));
+        tr.append($('<td>').append(seelink));
+        tr.append($('<td>').html(file['size']));
+        tr.append($('<td>').html(new Date(file['updated'] * 1000)));
+
+        $('#files tbody').append(tr);
+    }
+}
+
+$(document).ready(function() {
+    $.get("/api/flist/{{ targetuser }}", function(data) {
+        buildlist(data, "{{ targetuser }}");
+    });
+});
+</script>
 {% endblock %}
