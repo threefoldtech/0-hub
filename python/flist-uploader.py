@@ -827,21 +827,27 @@ def api_listing(source):
         'special': 0
     }
 
+    def getPath(location, name):
+        if location:
+            return "/%s/%s" % (location, name)
+
+        return "/%s" % name
+
     def procDir(dirobj, type, name, args, key):
         contents['directory'] += 1
-        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
 
     def procSpecial(dirobj, type, name, subobj, args):
         contents['special'] += 1
-        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
 
     def procFile(dirobj, type, name, subobj, args):
         contents['regular'] += 1
-        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': dirobj.dbobj.size})
+        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': dirobj.dbobj.size})
 
     def procLink(dirobj, type, name, subobj, args):
         contents['symlink'] += 1
-        contents['content'].append({'path': "/%s/%s" % (dirobj.dbobj.location, name), 'size': 0})
+        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
 
     print("[+] parsing database")
     result = []

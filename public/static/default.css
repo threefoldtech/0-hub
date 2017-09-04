@@ -25,3 +25,9 @@ table thead tr {
     padding-top: 10px !important;
     padding-bottom: 20px !important;
 }
+
+#flist-contents {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: auto;
+}

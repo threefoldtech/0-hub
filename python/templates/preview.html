@@ -23,13 +23,33 @@
 
             <h3>Archive Checksum (MD5)</h3>
             <pre>{{ checksum }}</pre>
-        </p>
-        <!--
-        <h2>Contents</h2>
-        <pre>Coming soon...</pre>
-        -->
 
-        <!-- <p>For your information, we found <code>{{ filescount }} files</code> in your archive.</p> -->
+            <h2>Contents</h2>
+            <pre id="flist-contents"><a href="#" onclick="return contents();">Show the contents</a></pre>
+        </p>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+<script>
+function contents() {
+    $("#flist-contents").html("Loading...");
+
+    $.get('/api/flist/{{ targetuser }}/{{ flistname }}', function(data) {
+        var header = data['directory'] + " directories, " +
+                     data['regular'] + " regular files, " +
+                     data['symlink'] + " symlinks and " +
+                     data['special'] + " special files.\n\n";
+
+        var contents = [];
+
+        for(var index in data['content'])
+            contents.push(data['content'][index]["path"]);
+
+        $("#flist-contents").html(header + contents.join("\n"));
+    });
+
+    return false;
+}
+</script>
 {% endblock %}
