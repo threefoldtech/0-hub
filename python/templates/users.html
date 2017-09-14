@@ -62,12 +62,18 @@ function buildlist(repositories) {
 
         $('#' + target + ' tbody').append(tr);
     }
+
+    $(window).scrollTop(sessionStorage.getItem('scrollTop') || 0);
 }
 
 $(document).ready(function() {
     $.get("/api/repositories", function(data) {
         buildlist(data);
     });
+});
+
+$(window).on("beforeunload", function() {
+    sessionStorage.setItem('scrollTop', $(window).scrollTop());
 });
 </script>
 {% endblock %}
