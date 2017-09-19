@@ -39,31 +39,9 @@
 </div>
 
 <script>
-function buildlist(files, username) {
-    $("#files tbody").empty();
-
-    for(var index in files) {
-        var file = files[index];
-
-        var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
-        var seeicon = $('<span>', {'class': 'glyphicon glyphicon-eye-open'});
-
-        var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
-        var seelink = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
-
-        var tr = $('<tr>');
-        tr.append($('<td>').append(fileicon).append(filelink));
-        tr.append($('<td>').append(seelink));
-        tr.append($('<td>').html(file['size']));
-        tr.append($('<td>').html(new Date(file['updated'] * 1000)));
-
-        $('#files tbody').append(tr);
-    }
-}
-
 $(document).ready(function() {
     $.get("/api/flist/{{ targetuser }}", function(data) {
-        buildlist(data, "{{ targetuser }}");
+        flists(data, "{{ targetuser }}");
     });
 });
 </script>

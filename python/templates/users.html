@@ -45,30 +45,9 @@
 </div>
 
 <script>
-function buildlist(repositories) {
-    $("#trusted tbody").empty()
-    $("#contributors tbody").empty();
-
-    for(var index in repositories) {
-        var repository = repositories[index];
-        var username = repository['name'];
-
-        var target = repository['official'] ? 'trusted' : 'contributors';
-        var trclass = repository['official'] ? 'warning' : '';
-
-        var span = $('<span>', {'class': 'glyphicon glyphicon-certificate ' + target});
-        var href = $('<a>', {'href': username}).html(username);
-        var tr = $('<tr>', {'class': trclass}).append($('<td>').append(span).append(href));
-
-        $('#' + target + ' tbody').append(tr);
-    }
-
-    $(window).scrollTop(sessionStorage.getItem('scrollTop') || 0);
-}
-
 $(document).ready(function() {
     $.get("/api/repositories", function(data) {
-        buildlist(data);
+        repositories(data);
     });
 });
 

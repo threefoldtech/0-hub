@@ -42,9 +42,21 @@ class IYOChecker(object):
     def __call__(self, environ, start_response):
         req = Request(environ, shallow=True)
         environ['username'] = None
+        environ['accounts'] = []
 
-        if req.headers.get('X-Iyo-Username'):
-            environ['username'] = req.headers['X-Iyo-Username']
+        if req.headers.get('X-Iyo-Token'):
+            data = json.loads(req.headers.get('X-Iyo-Token'))
+            environ['username'] = data['username']
+            environ['accounts'] = [data['username']]
+
+            for account in data['scope']:
+                environ['accounts'].append(account.split(':')[2])
+
+        # switch user
+        if req.cookies.get('active-user'):
+            if req.cookies.get('active-user') in environ['accounts']:
+                print("[+] switching user to %s" % req.cookies.get('active-user'))
+                environ['username'] = req.cookies.get('active-user')
 
         return self.app(environ, start_response)
 
@@ -416,6 +428,7 @@ def uploadSuccess(flistname, filescount, home, username=None):
 
     settings = {
         'username': username,
+        'accounts': request.environ['accounts'],
         'flistname': flistname,
         'filescount': filescount,
         'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
@@ -427,6 +440,7 @@ def uploadSuccess(flistname, filescount, home, username=None):
 def internalRedirect(target, error=None):
     settings = {
         'username': request.environ['username'],
+        'accounts': request.environ['accounts'],
     }
 
     if error:
