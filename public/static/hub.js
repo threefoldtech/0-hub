@@ -31,8 +31,12 @@ function flists(files, username) {
         var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
         var seelink = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
 
+        var filetd = $('<td>').append(fileicon).append(filelink);
+        if(file['type'] == 'symlink')
+            filetd.append($('<span>').html(" ➔ " + file['target']));
+
         var tr = $('<tr>');
-        tr.append($('<td>').append(fileicon).append(filelink));
+        tr.append(filetd);
         tr.append($('<td>').append(seelink));
         tr.append($('<td>').html(file['size']));
         tr.append($('<td>').html(new Date(file['updated'] * 1000)));

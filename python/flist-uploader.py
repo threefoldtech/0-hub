@@ -11,6 +11,7 @@ import docker
 import uuid
 import subprocess
 import pytoml as toml
+from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
@@ -735,13 +736,27 @@ def api_user_contents(username):
     contents = []
 
     for file in files:
-        stat = os.stat(os.path.join(PUBLIC_FOLDER, username, file))
+        filepath = os.path.join(PUBLIC_FOLDER, username, file)
+        stat = os.lstat(filepath)
 
-        contents.append({
-            'name': file,
-            'size': "%.2f KB" % ((stat.st_size) / 1024),
-            'updated': int(stat.st_mtime),
-        })
+        if S_ISLNK(stat.st_mode):
+            target = os.readlink(filepath)
+
+            contents.append({
+                'name': file,
+                'size': "--",
+                'updated': int(stat.st_mtime),
+                'type': 'symlink',
+                'target': target,
+            })
+
+        else:
+            contents.append({
+                'name': file,
+                'size': "%.2f KB" % ((stat.st_size) / 1024),
+                'updated': int(stat.st_mtime),
+                'type': 'regular',
+            })
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -766,21 +781,25 @@ def api_inspect(username, flist):
 
     return response
 
-@app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
-def api_my_flist(flist):
+@app.route('/api/flist/me/<flist>')
+def api_my_inspect(flist):
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    username = request.environ['username']
+    return api_inspect(username, flist)
+
+@app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
+def api_my_flist(source, linkname):
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
     username = request.environ['username']
 
-    if request.method == 'GET':
-        return api_inspect(username, flist)
-
-    if request.method == 'DELETE':
-        return api_delete(username, flist)
+    return api_symlink(username, source, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
-def api_rename(source, destination):
+def api_my_rename(source, destination):
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
@@ -819,6 +838,35 @@ def api_delete(username, source):
         return api_response("Source not found", 404)
 
     os.unlink(sourcefile)
+
+    return api_response()
+
+def api_symlink(username, source, linkname):
+    target = os.path.join(PUBLIC_FOLDER, username)
+
+    if not os.path.isdir(target):
+        return api_response("User not found", 404)
+
+    sourcefile = os.path.join(target, source)
+    if not os.path.isfile(sourcefile):
+        return api_response("Source not found", 404)
+
+    # remove previous symlink if existing
+    linkfile = os.path.join(target, linkname)
+
+    if os.path.islink(linkfile):
+        os.unlink(linkfile)
+
+    # if it was not a link but a regular file, we don't overwrite
+    # existing flist, we only allows updating links
+    if os.path.isfile(linkfile):
+        return api_response("Link destination is already a file", 401)
+
+    cwd = os.getcwd()
+    os.chdir(target)
+
+    os.symlink(source, linkname)
+    os.chdir(cwd)
 
     return api_response()
 
