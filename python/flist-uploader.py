@@ -51,6 +51,9 @@ class IYOChecker(object):
             environ['accounts'] = [data['username']]
 
             for account in data['scope']:
+                if not account:
+                    continue
+
                 environ['accounts'].append(account.split(':')[2])
 
         # switch user
