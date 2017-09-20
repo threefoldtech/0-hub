@@ -45,16 +45,20 @@ class IYOChecker(object):
         environ['username'] = None
         environ['accounts'] = []
 
+        if req.headers.get('X-Iyo-Username'):
+            environ['username'] = req.headers.get('X-Iyo-Username')
+
         if req.headers.get('X-Iyo-Token'):
             data = json.loads(req.headers.get('X-Iyo-Token'))
-            environ['username'] = data['username']
-            environ['accounts'] = [data['username']]
+            if data.get('username'):
+                environ['username'] = data['username']
+                environ['accounts'] = [data['username']]
 
-            for account in data['scope']:
-                if not account:
-                    continue
+                for account in data['scope']:
+                    if not account:
+                        continue
 
-                environ['accounts'].append(account.split(':')[2])
+                    environ['accounts'].append(account.split(':')[2])
 
         # switch user
         if req.cookies.get('active-user'):
