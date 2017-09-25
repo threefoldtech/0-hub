@@ -58,7 +58,11 @@ class IYOChecker(object):
                     if not account:
                         continue
 
-                    environ['accounts'].append(account.split(':')[2])
+                    fields = account.split(':')
+                    if len(fields) < 3:
+                        continue
+
+                    environ['accounts'].append(fields[2])
 
         # switch user
         if req.cookies.get('active-user'):
