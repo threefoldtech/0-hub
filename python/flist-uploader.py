@@ -96,6 +96,17 @@ def dummy1(dirobj, type, name, args, key):
 def dummy2(dirobj, type, name, subobj, args):
     pass
 
+def timing(stats, entry):
+    if stats.get(entry):
+        # entry found, we ask end of time computing
+        stats[entry] = time.time() - stats[entry]
+
+    else:
+        # not found, starting count
+        stats[entry] = time.time()
+
+    return stats
+
 ######################################
 #
 # ACTIONS IMPLEMENTATION
@@ -172,13 +183,14 @@ def handle_flist_upload(f):
 
 def handle_flist(filepath, filename):
     username = request.environ['username']
+    timers = {}
 
     #
     # checking and extracting files
     #
     target = os.path.join(FLIST_TEMPDIR, filename)
     if os.path.exists(target):
-        return internalRedirect("upload.html", "We are already processing this file.")
+        return {'status': 'error', 'message': 'We are already processing this file.'}
 
     os.mkdir(target)
 
@@ -186,11 +198,15 @@ def handle_flist(filepath, filename):
     # ADD SECURITY CHECK
 
     print("[+] extracting files")
+    timing(timers, "extract")
+
     t = tarfile.open(filepath, "r:*")
     t.extractall(path=target)
 
     filescount = len(t.getnames())
     t.close()
+
+    timing(timers, "extract")
 
     #
     # building flist from extracted files
@@ -198,11 +214,18 @@ def handle_flist(filepath, filename):
     dbtemp = '%s.db' % target
 
     print("[+] preparing flist")
+
+    timing(timers, "populate")
+
     kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
     f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
     f.add(target, excludes=[".*\.pyc", ".*__pycache__"])
 
+    timing(timers, "populate")
+
+    timing(timers, "upload")
     handle_flist_upload(f)
+    timing(timers, "upload")
     # f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
 
     #
@@ -221,7 +244,7 @@ def handle_flist(filepath, filename):
     dbpath = os.path.join(home, flistname)
 
     if not mkflist(dbtemp, dbpath):
-        return "Someting went wrong, please contact support to report this issue."
+        return {'status': 'error', 'message': 'Someting went wrong, please contact support to report this issue.'}
 
     # cleaning
     shutil.rmtree(target)
@@ -231,7 +254,8 @@ def handle_flist(filepath, filename):
     #
     # rendering summary page
     #
-    return uploadSuccess(flistname, filescount, home)
+    return {'status': 'success', 'flist': flistname, 'count': filescount, 'timing': timers}
+    # return uploadSuccess(flistname, filescount, home)
 
 def handle_docker_import(dockerimage):
     dockername = uuid.uuid4().hex
@@ -502,6 +526,31 @@ def flist_md5(username, flistname):
 
     return hash_md5.hexdigest()
 
+def flist_upload(request):
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        return {'status': 'error', 'message': 'No file found'}
+
+    file = request.files['file']
+
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        return {'status': 'error', 'message': 'No file selected'}
+
+    print(file.filename)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+
+        print("[+] saving file")
+        target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(target)
+
+        return handle_flist(target, filename)
+
+    else:
+        return {'status': 'error', 'message': 'This file is not allowed'}
+
 ######################################
 #
 # ROUTING ACTIONS
@@ -513,29 +562,12 @@ def upload_file():
         return "Access denied."
 
     if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            return internalRedirect("upload.html", "No file found")
+        response = flist_upload(request)
+        if response['status'] == 'success':
+            return uploadSuccess(response['flist'], response['count'], response['home'])
 
-        file = request.files['file']
-
-        # if user does not select file, browser also
-        # submit a empty part without filename
-        if file.filename == '':
-            return internalRedirect("upload.html", "No file selected")
-
-        print(file.filename)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-
-            print("[+] saving file")
-            target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(target)
-
-            return handle_flist(target, filename)
-
-        else:
-            return internalRedirect("upload.html", "This file is not allowed.")
+        if response['status'] == 'error':
+            return internalRedirect("upload.html", response['message'])
 
     return internalRedirect("upload.html")
 
@@ -832,6 +864,21 @@ def api_my_rename(source, destination):
 
     return api_response()
 
+@app.route('/api/flist/me/upload', methods=['POST'])
+def api_my_upload():
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    response = flist_upload(request)
+    if response['status'] == 'success':
+        if config['DEBUG']:
+            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': response['timing']})
+
+        else:
+            return api_response(extra={'name': response['flist'], 'files': response['count']})
+
+    if response['status'] == 'error':
+        return api_response(response['message'], 500)
 
 ######################################
 #
@@ -881,11 +928,14 @@ def api_symlink(username, source, linkname):
 
     return api_response()
 
-def api_response(error=None, code=200):
+def api_response(error=None, code=200, extra=None):
     reply = {"status": "success"}
 
     if error:
         reply = {"status": "error", "message": error}
+
+    if extra:
+        reply['payload'] = extra
 
     response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
