@@ -1,86 +1,51 @@
 import os
-import tarfile
-import shutil
-import time
 import json
-import hashlib
-import tempfile
-import redis
-import g8storclient
-import docker
-import uuid
-import subprocess
-import pytoml as toml
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
-from js9 import j
 from config import config
+from hub.flist import HubFlist, HubPublicFlist
+from hub.itsyouonline import ItsYouChecker
+from hub.docker import HubDocker
+from hub.merge import HubMerger
 
 #
-# Theses location should works out-of-box if you use default settings
+# runtime configuration
+# theses location should works out-of-box if you use default settings
 #
 thispath = os.path.dirname(os.path.realpath(__file__))
-BASEPATH = os.path.join(thispath, "..")
+basepath = os.path.join(thispath, "..")
 
-UPLOAD_FOLDER = os.path.join(BASEPATH, "workdir/distfiles")
-FLIST_TEMPDIR = os.path.join(BASEPATH, "workdir/temp")
-PUBLIC_FOLDER = os.path.join(BASEPATH, "public/users/")
-ALLOWED_EXTENSIONS = set(['.tar.gz'])
+config['public-directory'] = os.path.join(basepath, "public/users/")
+config['flist-work-directory'] = os.path.join(basepath, "workdir/temp")
+config['docker-work-directory'] = os.path.join(basepath, "workdir/temp")
+config['upload-directory'] = os.path.join(basepath, "workdir/distfiles")
+config['allowed-extensions'] = set(['.tar.gz'])
 
-dockerclient = docker.from_env()
+print("[+] upload directory: %s" % config['upload-directory'])
+print("[+] flist creation  : %s" % config['flist-work-directory'])
+print("[+] public directory: %s" % config['public-directory'])
 
-print("[+] upload directory: %s" % UPLOAD_FOLDER)
-print("[+] flist creation  : %s" % FLIST_TEMPDIR)
-print("[+] public directory: %s" % PUBLIC_FOLDER)
-
-class IYOChecker(object):
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        req = Request(environ, shallow=True)
-        environ['username'] = None
-        environ['accounts'] = []
-
-        if req.headers.get('X-Iyo-Username'):
-            environ['username'] = req.headers.get('X-Iyo-Username')
-
-        if req.headers.get('X-Iyo-Token'):
-            data = json.loads(req.headers.get('X-Iyo-Token'))
-            if data.get('username'):
-                environ['username'] = data['username']
-                environ['accounts'] = [data['username']]
-
-                for account in data['scope']:
-                    if not account:
-                        continue
-
-                    fields = account.split(':')
-                    if len(fields) < 3:
-                        continue
-
-                    environ['accounts'].append(fields[2])
-
-        # switch user
-        if req.cookies.get('active-user'):
-            if req.cookies.get('active-user') in environ['accounts']:
-                print("[+] switching user to %s" % req.cookies.get('active-user'))
-                environ['username'] = req.cookies.get('active-user')
-
-        return self.app(environ, start_response)
-
+#
+# initialize flask application
+#
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-app.wsgi_app = IYOChecker(app.wsgi_app)
+app.wsgi_app = ItsYouChecker(app.wsgi_app)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 
-def allowed_file(filename):
-    for ext in ALLOWED_EXTENSIONS:
+######################################
+#
+# TEMPLATES MANIPULATION
+#
+######################################
+def allowed_file(filename, validate=False):
+    if validate:
+        return filename.endswith(".flist")
+
+    for ext in config['allowed-extensions']:
         if filename.endswith(ext):
             return True
 
@@ -90,373 +55,13 @@ def globalTemplate(filename, args):
     args['debug'] = config['DEBUG']
     return render_template(filename, **args)
 
-def dummy1(dirobj, type, name, args, key):
-    pass
-
-def dummy2(dirobj, type, name, subobj, args):
-    pass
-
-def timing(stats, entry):
-    if stats.get(entry):
-        # entry found, we ask end of time computing
-        stats[entry] = time.time() - stats[entry]
-
-    else:
-        # not found, starting count
-        stats[entry] = time.time()
-
-    return stats
-
-######################################
-#
-# ACTIONS IMPLEMENTATION
-#
-######################################
-def mkflist(directory, target):
-    #
-    # Precision: since 'compact_range', this is probably
-    # not needed anymore, but need more tests to confirm.
-    #
-
-    #
-    # UGLY WORKAROUND
-    # No way to check if rocksdb have finished yet
-    # We waits until tar was correctly able to pack stuff
-    # THIS NEED TO BE FIXED
-    #
-    notGood = True
-
-    while notGood:
-        try:
-            with tarfile.open(target, "w:gz") as tar:
-                tar.add(directory, arcname="")
-
-            notGood = False
-
-        except FileNotFoundError as e:
-            print("Workaround, not good")
-            print(e)
-            time.sleep(0.1)
-            pass
-
-        except Exception:
-            return None
-
-    #
-    # FIXME: UGLY WORKAROUND
-    #
-    return True
-
-def handle_flist_upload(f):
-    print("[+] populating contents")
-    f.populate()
-
-    # this is a workaround to ensure file are written
-    # and not in a unstable state
-    # this access 'protected' class member, this should be
-    # improved
-    print("[+] compacting db")
-    f.dirCollection._db.rocksdb.compact_range()
-
-    r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
-    def procFile(dirobj, type, name, subobj, args):
-        fullpath = "%s/%s/%s" % (f.rootpath, dirobj.dbobj.location, name)
-        print("[+] uploading: %s" % fullpath)
-        hashs = g8storclient.encrypt(fullpath)
-
-        if hashs is None:
-            return
-
-        for hash in hashs:
-            if not r.exists(hash['hash']):
-                r.set(hash['hash'], hash['data'])
-
-    print("[+] uploading contents")
-    result = []
-    f.walk(
-        dirFunction=dummy1,
-        fileFunction=procFile,
-        specialFunction=dummy2,
-        linkFunction=dummy2,
-        args=result
-    )
-
-def handle_flist(filepath, filename):
-    username = request.environ['username']
-    timers = {}
-
-    #
-    # checking and extracting files
-    #
-    target = os.path.join(FLIST_TEMPDIR, filename)
-    if os.path.exists(target):
-        return {'status': 'error', 'message': 'We are already processing this file.'}
-
-    os.mkdir(target)
-
-    # print(t.getnames())
-    # ADD SECURITY CHECK
-
-    print("[+] extracting files")
-    timing(timers, "extract")
-
-    t = tarfile.open(filepath, "r:*")
-    t.extractall(path=target)
-
-    filescount = len(t.getnames())
-    t.close()
-
-    timing(timers, "extract")
-
-    #
-    # building flist from extracted files
-    #
-    dbtemp = '%s.db' % target
-
-    print("[+] preparing flist")
-
-    timing(timers, "populate")
-
-    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=dbtemp)
-    f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
-    f.add(target, excludes=[".*\.pyc", ".*__pycache__"])
-
-    timing(timers, "populate")
-
-    timing(timers, "upload")
-    handle_flist_upload(f)
-    timing(timers, "upload")
-    # f.upload(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
-
-    #
-    # creating the flist archive
-    #
+def file_from_flist(filename):
     cleanfilename = filename
-    for ext in ALLOWED_EXTENSIONS:
+    for ext in config['allowed-extensions']:
         if cleanfilename.endswith(ext):
             cleanfilename = cleanfilename[:-len(ext)]
 
-    home = os.path.join(PUBLIC_FOLDER, username)
-    if not os.path.exists(home):
-        os.mkdir(home)
-
-    flistname = "%s.flist" % cleanfilename
-    dbpath = os.path.join(home, flistname)
-
-    if not mkflist(dbtemp, dbpath):
-        return {'status': 'error', 'message': 'Someting went wrong, please contact support to report this issue.'}
-
-    # cleaning
-    shutil.rmtree(target)
-    shutil.rmtree(dbtemp)
-    os.unlink(filepath)
-
-    #
-    # rendering summary page
-    #
-    return {'status': 'success', 'flist': flistname, 'count': filescount, 'timing': timers}
-    # return uploadSuccess(flistname, filescount, home)
-
-def handle_docker_import(dockerimage):
-    dockername = uuid.uuid4().hex
-    print("[+] temporary docker name: %s" % dockername)
-
-    if ":" not in dockerimage:
-        dockerimage = "%s:latest" % dockerimage
-
-    print("[+] pulling image: %s" % dockerimage)
-    try:
-        image = dockerclient.images.pull(dockerimage)
-
-    except docker.errors.ImageNotFound:
-        variables = {'error': "Docker image not found"}
-        return globalTemplate("docker.html", variables)
-
-    command = None
-
-    if not image.attrs['Config']['Cmd'] and not image.attrs['Config']['Entrypoint']:
-        command = "/bin/sh"
-
-    print("[+] starting temporary container")
-    cn = dockerclient.containers.create(dockerimage, name=dockername, hostname=dockername, command=command)
-
-    print("[+] creating target directory")
-    tmpdir = tempfile.TemporaryDirectory(prefix=dockername)
-
-    print("[+] dumping files to: %s" % tmpdir.name)
-    subprocess.call(['sh', '-c', 'docker export %s | tar -xpf - -C %s' % (dockername, tmpdir.name)])
-
-    print("[+] creating container entrypoint")
-    command = []
-    args = []
-
-    if cn.attrs['Config']['Entrypoint']:
-        command = cn.attrs['Config']['Entrypoint'][0]
-        args = cn.attrs['Config']['Cmd']
-
-    else:
-        command = cn.attrs['Config']['Cmd'][0]
-        args = cn.attrs['Config']['Cmd'][1:]
-
-    boot = {
-        'startup.entry':      {'name': "core.system", 'running_delay': -1},
-        'startup.entry.args': {'name': command, 'args': args}
-    }
-
-    with open(os.path.join(tmpdir.name, '.startup.toml'), 'w') as f:
-        f.write(toml.dumps(boot))
-
-    print("[+] parsing the flist")
-    flistdir = tempfile.TemporaryDirectory(prefix="flist-db-%s" % dockername)
-    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=flistdir.name)
-    f = j.tools.flist.getFlist(rootpath=tmpdir.name, kvs=kvs)
-    f.add(tmpdir.name, excludes=[".*\.pyc", ".*__pycache__"])
-
-    handle_flist_upload(f)
-
-    print("[+] creating the flist file")
-    home = os.path.join(PUBLIC_FOLDER, "dockers")
-    if not os.path.exists(home):
-        os.mkdir(home)
-
-    flistname = "%s.flist" % dockerimage.replace(":", "-").replace('/', '-')
-    dbpath = os.path.join(home, flistname)
-
-    if not mkflist(flistdir.name, dbpath):
-        return "Someting went wrong, please contact support to report this issue."
-
-    print("[+] cleaning temporary files")
-    tmpdir.cleanup()
-    flistdir.cleanup()
-
-    print("[+] destroying the container")
-    cn.remove(force=True)
-
-    print("[+] cleaning up the docker image")
-    dockerclient.images.remove(dockerimage, force=True)
-
-    variables = {}
-    return uploadSuccess(flistname, 0, home, "dockers")
-
-def handle_existing_flist(filepath, filename):
-    username = request.environ['username']
-
-    #
-    # checking and extracting files
-    #
-    target = os.path.join(FLIST_TEMPDIR, filename)
-    if os.path.exists(target):
-        return internalRedirect("upload-flist.html", "We are already processing this file.")
-
-    os.mkdir(target)
-
-    print("[+] extracting database")
-    t = tarfile.open(filepath, "r:gz")
-    t.extractall(path=target)
-    t.close()
-
-    #
-    # parsing database
-    #
-    kvs = j.data.kvs.getRocksDBStore('flist', namespace=None, dbpath=target)
-    f = j.tools.flist.getFlist(rootpath=target, kvs=kvs)
-
-    r = redis.Redis(config['PRIVATE_ARDB_HOST'], config['PRIVATE_ARDB_PORT'])
-    pipe = r.pipeline()
-
-    def procFile(dirobj, type, name, subobj, args):
-        for chunk in subobj.attributes.file.blocks:
-            rkey = chunk.hash.decode('utf-8')
-            pipe.exists(rkey)
-
-    result = []
-    f.walk(
-        dirFunction=dummy1,
-        fileFunction=procFile,
-        specialFunction=dummy2,
-        linkFunction=dummy2,
-        args=result
-    )
-
-    result = pipe.execute()
-    shutil.rmtree(target)
-
-    if False in result:
-        os.unlink(filepath)
-        return internalRedirect("upload-flist.html", "Sorry, some files was not found in the backend.")
-
-    home = os.path.join(PUBLIC_FOLDER, username)
-    if not os.path.exists(home):
-        os.mkdir(home)
-
-    dbpath = os.path.join(home, filename)
-    os.rename(filepath, dbpath)
-
-    return uploadSuccess(filename, 0, home)
-
-def handle_merge(sources, targetname):
-    status = flist_merging(sources, targetname)
-
-    if not status == True:
-        variables = {'error': "Something went wrong, please contact support"}
-        return globalTemplate("merge.html", variables)
-
-    username = request.environ['username']
-    home = os.path.join(PUBLIC_FOLDER, username)
-
-    return uploadSuccess(targetname, 0, home)
-
-def flist_merging(sources, targetname):
-    items = {}
-    merger = j.tools.flist.get_merger()
-    username = request.environ['username']
-
-    #
-    # Extracting flists to distinct directories
-    #
-    for source in sources:
-        workdir = tempfile.TemporaryDirectory(prefix="merge-")
-
-        print("[+] %s: %s" % (source, workdir.name))
-        filepath = os.path.join(PUBLIC_FOLDER, source)
-
-        t = tarfile.open(filepath, "r:*")
-        t.extractall(path=workdir.name)
-        t.close()
-
-        kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=workdir.name)
-        kdb = j.tools.flist.getFlist(rootpath=workdir.name, kvs=kvs)
-        merger.add_source(kdb)
-
-        items[source] = {
-            'workdir': workdir,
-            'kvs': kvs,
-            'kdb': kdb
-        }
-
-    #
-    # Merging sources
-    #
-    target = tempfile.TemporaryDirectory(prefix="merge-target-")
-    kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
-    ktarget = j.tools.flist.getFlist(rootpath='/', kvs=kvs)
-
-    merger.add_destination(ktarget)
-    merger.merge()
-
-    home = os.path.join(PUBLIC_FOLDER, username)
-    if not os.path.exists(home):
-        os.mkdir(home)
-
-    flist = os.path.join(home, targetname)
-
-    #
-    # Release new build
-    #
-    if not mkflist(target.name, flist):
-        return "Someting went wrong, please contact support to report this issue."
-
-    return True
+    return cleanfilename
 
 def uploadSuccess(flistname, filescount, home, username=None):
     if username is None:
@@ -508,49 +113,6 @@ def flist_merge_post():
 
     return data
 
-#
-# flist operation
-#
-def flist_md5(username, flistname):
-    hash_md5 = hashlib.md5()
-    fname = os.path.join(PUBLIC_FOLDER, username, flistname)
-
-    print("[+] md5: %s\n" % fname)
-
-    if not os.path.isfile(fname):
-        return None
-
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    return hash_md5.hexdigest()
-
-def flist_upload(request):
-    # check if the post request has the file part
-    if 'file' not in request.files:
-        return {'status': 'error', 'message': 'No file found'}
-
-    file = request.files['file']
-
-    # if user does not select file, browser also
-    # submit a empty part without filename
-    if file.filename == '':
-        return {'status': 'error', 'message': 'No file selected'}
-
-    print(file.filename)
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-
-        print("[+] saving file")
-        target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(target)
-
-        return handle_flist(target, filename)
-
-    else:
-        return {'status': 'error', 'message': 'This file is not allowed'}
-
 ######################################
 #
 # ROUTING ACTIONS
@@ -561,8 +123,11 @@ def upload_file():
     if not request.environ['username']:
         return "Access denied."
 
+    username = request.environ['username']
+
     if request.method == 'POST':
-        response = flist_upload(request)
+        response = api_flist_upload(request, username)
+
         if response['status'] == 'success':
             return uploadSuccess(response['flist'], response['count'], response['home'])
 
@@ -576,30 +141,16 @@ def upload_file_flist():
     if not request.environ['username']:
         return "Access denied."
 
+    username = request.environ['username']
+
     if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            return internalRedirect("upload-flist.html", "No file found")
+        response = api_flist_upload(request, username, validate=True)
 
-        file = request.files['file']
+        if response['status'] == 'success':
+            return uploadSuccess(response['flist'], response['count'], response['home'])
 
-        # if user does not select file, browser also
-        # submit a empty part without filename
-        if file.filename == '':
-            return internalRedirect("upload-flist.html", "No file selected")
-
-        print(file.filename)
-        if file and file.filename.endswith(".flist"):
-            filename = secure_filename(file.filename)
-
-            print("[+] saving file")
-            target = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(target)
-
-            return handle_existing_flist(target, filename)
-
-        else:
-            return internalRedirect("upload-flist.html", "This file is not allowed.")
+        if response['status'] == 'error':
+            return internalRedirect("upload-flist.html", response['message'])
 
     return internalRedirect("upload-flist.html")
 
@@ -608,13 +159,27 @@ def flist_merge():
     if not request.environ['username']:
         return "Access denied."
 
+    username = request.environ['username']
+
     if request.method == 'POST':
         data = flist_merge_post()
+        print(data)
+
+        # {'targetname': 'hellomerge.flist',
+        #'error': None,
+        #'sources': ['gig-official-apps/ubuntu1604.flist', 'maxux/ardb-lmdb.flist']}
 
         if data['error']:
             return internalRedirect("merge.html", data['error'])
 
-        return handle_merge(data['sources'], data['targetname'])
+        merger = HubMerger(config, username, data['targetname'])
+        status = merger.merge(data['sources'])
+
+        if not status == True:
+            variables = {'error': "Something went wrong, please contact support"}
+            return globalTemplate("merge.html", variables)
+
+        return uploadSuccess(data['targetname'], 0, "FIXME")
 
     # Merge page
     return internalRedirect("merge.html")
@@ -626,9 +191,17 @@ def docker_handler():
 
     if request.method == 'POST':
         if not request.form.get("docker-input"):
-            return internalRedirect("docker.html", "Missing docker image name")
+            return internalRedirect("docker.html", "missing docker image name")
 
-        return handle_docker_import(request.form.get("docker-input"))
+        docker = HubDocker(config)
+        response = docker.convert(request.form.get("docker-input"))
+
+        if response['status'] == 'success':
+            return uploadSuccess(response['flist'], response['count'], "")
+
+        if response['status'] == 'error':
+            return internalRedirect("docker.html", response['message'])
+
 
     # Docker page
     return internalRedirect("docker.html")
@@ -644,41 +217,39 @@ def show_users():
 
 @app.route('/<username>')
 def show_user(username):
-    path = os.path.join(PUBLIC_FOLDER, username)
-    if not os.path.exists(path):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
         abort(404)
 
-    variables = {'targetuser': username}
-
-    return globalTemplate("user.html", variables)
+    return globalTemplate("user.html", {'targetuser': username})
 
 @app.route('/<username>/<flist>.md')
 def show_flist_md(username, flist):
-    path = os.path.join(PUBLIC_FOLDER, username, flist)
-    if not os.path.exists(path):
+    flist = HubPublicFlist(config, username, flist)
+    if not flist.file_exists:
         abort(404)
 
     variables = {
         'targetuser': username,
-        'flistname': flist,
-        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
+        'flistname': flist.filename,
+        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist.filename),
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
-        'checksum': flist_md5(username, flist)
+        'checksum': flist.checksum
     }
 
     return globalTemplate("preview.html", variables)
 
 @app.route('/<username>/<flist>.txt')
 def show_flist_txt(username, flist):
-    path = os.path.join(PUBLIC_FOLDER, username, flist)
-    if not os.path.exists(path):
+    flist = HubPublicFlist(config, username, flist)
+    if not flist.file_exists:
         abort(404)
 
-    text  = "File:     %s\n" % flist
+    text  = "File:     %s\n" % flist.filename
     text += "Uploader: %s\n" % username
-    text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist)
+    text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist.filename)
     text += "Storage:  ardb://%s:%d\n" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
-    text += "Checksum: %s\n" % flist_md5(username, flist)
+    text += "Checksum: %s\n" % flist.checksum
 
     response = make_response(text)
     response.headers["Content-Type"] = "text/plain"
@@ -687,8 +258,8 @@ def show_flist_txt(username, flist):
 
 @app.route('/<username>/<flist>.json')
 def show_flist_json(username, flist):
-    path = os.path.join(PUBLIC_FOLDER, username, flist)
-    if not os.path.exists(path):
+    flist = HubPublicFlist(config, username, flist)
+    if not flist.file_exists:
         abort(404)
 
     data = {
@@ -706,14 +277,14 @@ def show_flist_json(username, flist):
 
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
-    source = os.path.join(PUBLIC_FOLDER, username)
-    filename = "%s.flist" % flist
-
-    return send_from_directory(directory=source, filename=filename)
+    flist = HubPublicFlist(config, username, flist)
+    return send_from_directory(directory=flist.user_path, filename=flist.filename)
 
 @app.route('/<username>/<flist>.flist.md5')
 def checksum_flist(username, flist):
-    hash = flist_md5(username, "%s.flist" % flist)
+    flist = HubPublicFlist(config, username, flist)
+    hash = flist.checksum
+
     if not hash:
         abort(404)
 
@@ -729,11 +300,11 @@ def checksum_flist(username, flist):
 ######################################
 @app.route('/api/flist')
 def api_list():
-    root = sorted(os.listdir(PUBLIC_FOLDER))
+    repositories = api_repositories()
     output = []
 
-    for user in root:
-        target = os.path.join(PUBLIC_FOLDER, user)
+    for user in repositories:
+        target = os.path.join(config['public-directory'], user['name'])
 
         # ignore files (eg: .keep file)
         if not os.path.isdir(target):
@@ -741,7 +312,7 @@ def api_list():
 
         flists = sorted(os.listdir(target))
         for flist in flists:
-            output.append("%s/%s" % (user, flist))
+            output.append("%s/%s" % (user['name'], flist))
 
     response = make_response(json.dumps(output) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -749,37 +320,25 @@ def api_list():
     return response
 
 @app.route('/api/repositories')
-def api_repositories():
-    root = sorted(os.listdir(PUBLIC_FOLDER))
+def api_list_repositories():
+    repositories = api_repositories()
 
-    output = []
-
-    for user in root:
-        target = os.path.join(PUBLIC_FOLDER, user)
-
-        # ignore files (eg: .keep file)
-        if not os.path.isdir(target):
-            continue
-
-        official = (user in config['PUBLIC_OFFICIALS'])
-        output.append({'name': user, 'official': official})
-
-    response = make_response(json.dumps(output) + "\n")
+    response = make_response(json.dumps(repositories) + "\n")
     response.headers["Content-Type"] = "application/json"
 
     return response
 
 @app.route('/api/flist/<username>')
 def api_user_contents(username):
-    path = os.path.join(PUBLIC_FOLDER, username)
-    if not os.path.exists(path):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
         abort(404)
 
-    files = sorted(os.listdir(path))
+    files = sorted(os.listdir(flist.user_path))
     contents = []
 
     for file in files:
-        filepath = os.path.join(PUBLIC_FOLDER, username, file)
+        filepath = os.path.join(config['public-directory'], username, file)
         stat = os.lstat(filepath)
 
         if S_ISLNK(stat.st_mode):
@@ -808,28 +367,32 @@ def api_user_contents(username):
 
 @app.route('/api/flist/<username>/<flist>')
 def api_inspect(username, flist):
-    target = os.path.join(PUBLIC_FOLDER, username)
+    flist = HubPublicFlist(config, username, flist)
 
-    if not os.path.isdir(target):
-        return api_response("User not found", 404)
+    if not flist.user_exists:
+        return api_response("user not found", 404)
 
-    sourcefile = os.path.join(target, flist)
-    if not os.path.isfile(sourcefile):
-        return api_response("Source not found", 404)
+    if not flist.file_exists:
+        return api_response("source not found", 404)
 
-    contents = api_listing(sourcefile)
+    flist.raw.loads(flist.target)
+    contents = flist.raw.listing()
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
 
     return response
 
-@app.route('/api/flist/me/<flist>')
+@app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
 def api_my_inspect(flist):
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
     username = request.environ['username']
+
+    if request.method == 'DELETE':
+        return api_delete(username, flist)
+
     return api_inspect(username, flist)
 
 @app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
@@ -846,21 +409,17 @@ def api_my_rename(source, destination):
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
-    if not destination.endswith(".flist"):
-        return api_response("Invalid destination name", 400)
-
     username = request.environ['username']
-    target = os.path.join(PUBLIC_FOLDER, username)
+    flist = HubPublicFlist(config, username, source)
+    destflist = HubPublicFlist(config, username, destination)
 
-    if not os.path.isdir(target):
-        return api_response("User not found", 404)
+    if not flist.user_exists:
+        return api_response("user not found", 404)
 
-    sourcefile = os.path.join(target, source)
-    if not os.path.isfile(sourcefile):
-        return api_response("Source not found", 404)
+    if not flist.file_exists:
+        return api_response("source not found", 404)
 
-    destfile = os.path.join(target, destination)
-    os.rename(sourcefile, destfile)
+    os.rename(flist.target, destflist.target)
 
     return api_response()
 
@@ -869,10 +428,10 @@ def api_my_upload():
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
-    response = flist_upload(request)
+    response = api_flist_upload(request)
     if response['status'] == 'success':
         if config['DEBUG']:
-            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': response['timing']})
+            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
 
         else:
             return api_response(extra={'name': response['flist'], 'files': response['count']})
@@ -886,47 +445,113 @@ def api_my_upload():
 #
 ######################################
 def api_delete(username, source):
-    target = os.path.join(PUBLIC_FOLDER, username)
+    flist = HubPublicFlist(config, username, source)
 
-    if not os.path.isdir(target):
-        return api_response("User not found", 404)
+    if not flist.user_exists:
+        return api_response("user not found", 404)
 
-    sourcefile = os.path.join(target, source)
-    if not os.path.isfile(sourcefile):
-        return api_response("Source not found", 404)
+    if not flist.file_exists:
+        return api_response("source not found", 404)
 
-    os.unlink(sourcefile)
+    os.unlink(flist.target)
 
     return api_response()
 
 def api_symlink(username, source, linkname):
-    target = os.path.join(PUBLIC_FOLDER, username)
+    flist = HubPublicFlist(config, username, source)
+    linkflist = HubPublicFlist(config, username, linkname)
 
-    if not os.path.isdir(target):
-        return api_response("User not found", 404)
+    if not flist.user_exists:
+        return api_response("user not found", 404)
 
-    sourcefile = os.path.join(target, source)
-    if not os.path.isfile(sourcefile):
-        return api_response("Source not found", 404)
+    if not flist.file_exists:
+        return api_response("source not found", 404)
 
     # remove previous symlink if existing
-    linkfile = os.path.join(target, linkname)
-
-    if os.path.islink(linkfile):
-        os.unlink(linkfile)
+    if os.path.islink(linkflist.target):
+        os.unlink(linkflist.target)
 
     # if it was not a link but a regular file, we don't overwrite
     # existing flist, we only allows updating links
-    if os.path.isfile(linkfile):
-        return api_response("Link destination is already a file", 401)
+    if os.path.isfile(linkflist.target):
+        return api_response("link destination is already a file", 401)
 
     cwd = os.getcwd()
-    os.chdir(target)
+    os.chdir(flist.user_path)
 
-    os.symlink(source, linkname)
+    os.symlink(flist.filename, linkflist.filename)
     os.chdir(cwd)
 
     return api_response()
+
+def api_flist_upload(request, username, validate=False):
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        return {'status': 'error', 'message': 'no file found'}
+
+    file = request.files['file']
+
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        return {'status': 'error', 'message': 'no file selected'}
+
+    if not allowed_file(file.filename, validate):
+        return {'status': 'error', 'message': 'this file is not allowed'}
+
+    #
+    # processing the file
+    #
+    filename = secure_filename(file.filename)
+
+    print("[+] saving file")
+    source = os.path.join(config['upload-directory'], filename)
+    file.save(source)
+
+    cleanfilename = file_from_flist(filename)
+    flist = HubPublicFlist(config, username, cleanfilename)
+
+    # validate if the flist exists
+    if not validate:
+        # extracting archive to workspace
+        workspace = flist.raw.workspace()
+
+        # create the flist
+        flist.raw.unpack(source, workspace.name)
+        flist.raw.initialize(workspace.name)
+        flist.raw.insert(workspace.name)
+        flist.raw.upload()
+
+    else:
+        # loads content
+        flist.raw.loads(source)
+        if not flist.raw.validate():
+            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
+
+    flist.raw.commit()
+    flist.user_create()
+    flist.raw.pack(flist.target)
+
+    # removing uploaded source file
+    os.unlink(source)
+
+    return {'status': 'success', 'flist': 'FIXME', 'home': 'FIXME', 'count': 0, 'timing': {}}
+
+def api_repositories():
+    root = sorted(os.listdir(config['public-directory']))
+    output = []
+
+    for user in root:
+        target = os.path.join(config['public-directory'], user)
+
+        # ignore files (eg: .keep file)
+        if not os.path.isdir(target):
+            continue
+
+        official = (user in config['PUBLIC_OFFICIALS'])
+        output.append({'name': user, 'official': official})
+
+    return output
 
 def api_response(error=None, code=200, extra=None):
     reply = {"status": "success"}
@@ -940,59 +565,6 @@ def api_response(error=None, code=200, extra=None):
     response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
     return response
-
-def api_listing(source):
-    target = tempfile.TemporaryDirectory(prefix="listing-")
-
-    print("[+] Unpacking flist database")
-    t = tarfile.open(source, "r:gz")
-    t.extractall(path=target.name)
-    t.close()
-
-    kvs = j.data.kvs.getRocksDBStore(name='flist', namespace=None, dbpath=target.name)
-    ktarget = j.tools.flist.getFlist(rootpath='/', kvs=kvs)
-
-    contents = {
-        'content': [],
-        'regular': 0,
-        'directory': 0,
-        'symlink': 0,
-        'special': 0
-    }
-
-    def getPath(location, name):
-        if location:
-            return "/%s/%s" % (location, name)
-
-        return "/%s" % name
-
-    def procDir(dirobj, type, name, args, key):
-        contents['directory'] += 1
-        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
-
-    def procSpecial(dirobj, type, name, subobj, args):
-        contents['special'] += 1
-        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
-
-    def procFile(dirobj, type, name, subobj, args):
-        contents['regular'] += 1
-        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': dirobj.dbobj.size})
-
-    def procLink(dirobj, type, name, subobj, args):
-        contents['symlink'] += 1
-        contents['content'].append({'path': getPath(dirobj.dbobj.location, name), 'size': 0})
-
-    print("[+] parsing database")
-    result = []
-    ktarget.walk(
-        dirFunction=procDir,
-        fileFunction=procFile,
-        specialFunction=procSpecial,
-        linkFunction=procLink,
-        args=result
-    )
-
-    return contents
 
 ######################################
 #
