@@ -58,7 +58,7 @@ class Client:
             res = method(uri, data=data, headers=headers, params=params)
         else:
             res = method(uri, json=data, headers=headers, params=params)
-        res.raise_for_status()
+        # res.raise_for_status()
         return res
 
     def post(self, uri, data, headers, params, content_type):
