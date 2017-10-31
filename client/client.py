@@ -21,6 +21,14 @@ class Client:
             return True
         return False
 
+    def set_token(self, token):
+        self.token = token
+        self.session.cookies.set('caddyoauth', token)
+
+    def set_user(self, username):
+        self.username = username
+        self.session.cookies.set('active-user', username)
+
     def set_auth_header(self, val):
         ''' set authorization header value'''
         self.session.headers.update({"Authorization": val})
