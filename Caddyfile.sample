@@ -14,8 +14,15 @@ oauth {
     authentication_required    /upload-flist
     authentication_required    /merge
     authentication_required    /docker-convert
-    authentication_required    /api/rename
-    authentication_required    /api/delete
+    authentication_required    /api/flist/me
+
+    api_base_path /api/flist/me
+    logout_url /logout
+
+    extra_scopes user:memberof:__OFFICIAL_ORG__
+
+    forward_payload
+    refreshable
 }
 
 proxy / __PYTHON_HOST__:5000 {
