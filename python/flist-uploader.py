@@ -89,27 +89,36 @@ def internalRedirect(target, error=None):
 
     return globalTemplate(target, settings)
 
-
 def flist_merge_post():
+    sources = request.form.getlist('flists[]')
+    target = request.form['name']
+
+    return flist_merge_data(sources, target)
+
+def flist_merge_data(sources, target):
     data = {}
     data['error'] = None
+    data['sources'] = sources
+    data['target'] = target
 
-    data['sources'] = request.form.getlist('flists[]')
+    if not isinstance(sources, list):
+        data['error'] = 'malformed json request'
+        return data
+
     if len(data['sources']) == 0:
-        data['error'] = "No source selected"
+        data['error'] = "no source found"
         return data
 
-    data['targetname'] = request.form['name']
-    if not data['targetname']:
-        data['error'] = "Missing build name"
+    if not data['target']:
+        data['error'] = "missing build (target) name"
         return data
 
-    if "/" in data['targetname']:
-        data['error'] = "Build name not allowed"
+    if "/" in data['target']:
+        data['error'] = "build name not allowed"
         return data
 
-    if not data['targetname'].endswith('.flist'):
-        data['targetname'] += '.flist'
+    if not data['target'].endswith('.flist'):
+        data['target'] += '.flist'
 
     return data
 
@@ -165,21 +174,17 @@ def flist_merge():
         data = flist_merge_post()
         print(data)
 
-        # {'targetname': 'hellomerge.flist',
-        #'error': None,
-        #'sources': ['gig-official-apps/ubuntu1604.flist', 'maxux/ardb-lmdb.flist']}
-
         if data['error']:
             return internalRedirect("merge.html", data['error'])
 
-        merger = HubMerger(config, username, data['targetname'])
+        merger = HubMerger(config, username, data['target'])
         status = merger.merge(data['sources'])
 
         if not status == True:
-            variables = {'error': "Something went wrong, please contact support"}
+            variables = {'error': status}
             return globalTemplate("merge.html", variables)
 
-        return uploadSuccess(data['targetname'], 0, "FIXME")
+        return uploadSuccess(data['target'], 0, "FIXME")
 
     # Merge page
     return internalRedirect("merge.html")
@@ -428,7 +433,9 @@ def api_my_upload():
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
-    response = api_flist_upload(request)
+    username = request.environ['username']
+
+    response = api_flist_upload(request, username)
     if response['status'] == 'success':
         if config['DEBUG']:
             return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
@@ -438,6 +445,27 @@ def api_my_upload():
 
     if response['status'] == 'error':
         return api_response(response['message'], 500)
+
+@app.route('/api/flist/me/merge/<target>', methods=['POST'])
+def api_my_merge(target):
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    username = request.environ['username']
+
+    sources = request.get_json(silent=True, force=True)
+    data = flist_merge_data(sources, target)
+
+    if data['error'] != None:
+        return api_response(data['error'], 500)
+
+    merger = HubMerger(config, username, data['target'])
+    status = merger.merge(data['sources'])
+
+    if not status == True:
+        return api_response(status, 500)
+
+    return api_response()
 
 ######################################
 #

@@ -15,6 +15,9 @@ class HubMerger:
         for source in sources:
             flistpath = os.path.join(self.config['public-directory'], source)
 
+            if not os.path.exists(flistpath):
+                return "%s source doesn't exists" % source
+
             flist = HubFlist(self.config)
             flist.loads(flistpath)
             merger.add_source(flist.flist)
@@ -28,4 +31,5 @@ class HubMerger:
 
         self.destination.raw.commit()
         self.destination.raw.pack(self.destination.target)
+
         return True
