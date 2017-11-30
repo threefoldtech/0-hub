@@ -45,5 +45,7 @@ a flist can be done anonymously.
 The hub host a basic REST API which can gives you some informations about flists, renaming them, remove them, etc.
 Please see the documentation to have more information.
 
+Moreover, a python client can be found on the [client](client) directory.
+
 # Documentation
 For full documentation, see the [`/docs`](/docs) directory.

@@ -53,7 +53,7 @@ api.set_user("another-username")
 ## Authentificated Access
 As soon as you are authentificated, you can do:
 
-```
+```python
 # upload an archive (tar.gz) to the hub
 api.flist.flist_meupload_post({'file': open(filename, 'rb')}, content_type='multipart/form-data')
 
