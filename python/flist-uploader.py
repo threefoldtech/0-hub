@@ -446,6 +446,24 @@ def api_my_upload():
     if response['status'] == 'error':
         return api_response(response['message'], 500)
 
+@app.route('/api/flist/me/upload-flist', methods=['POST'])
+def api_my_upload_flist():
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    username = request.environ['username']
+
+    response = api_flist_upload(request, username, validate=True)
+    if response['status'] == 'success':
+        if config['DEBUG']:
+            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
+
+        else:
+            return api_response(extra={'name': response['flist'], 'files': response['count']})
+
+    if response['status'] == 'error':
+        return api_response(response['message'], 500)
+
 @app.route('/api/flist/me/merge/<target>', methods=['POST'])
 def api_my_merge(target):
     if not request.environ['username']:
