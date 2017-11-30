@@ -184,7 +184,7 @@ def flist_merge():
             variables = {'error': status}
             return globalTemplate("merge.html", variables)
 
-        return uploadSuccess(data['target'], 0, "FIXME")
+        return uploadSuccess(data['target'], 0, data['target'])
 
     # Merge page
     return internalRedirect("merge.html")
@@ -581,7 +581,7 @@ def api_flist_upload(request, username, validate=False):
     # removing uploaded source file
     os.unlink(source)
 
-    return {'status': 'success', 'flist': 'FIXME', 'home': 'FIXME', 'count': 0, 'timing': {}}
+    return {'status': 'success', 'flist': flist.filename, 'home': username, 'count': 0, 'timing': {}}
 
 def api_repositories():
     root = sorted(os.listdir(config['public-directory']))
