@@ -388,6 +388,14 @@ def api_inspect(username, flist):
 
     return response
 
+@app.route('/api/flist/me', methods=['GET'])
+def api_my_myself():
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    return api_response(extra={"username": request.environ['username']})
+
+
 @app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
 def api_my_inspect(flist):
     if not request.environ['username']:
