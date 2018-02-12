@@ -25,7 +25,7 @@ class HubDocker:
 
         return command, args
 
-    def convert(self, dockerimage):
+    def convert(self, dockerimage, username="dockers"):
         dockername = uuid.uuid4().hex
         print("[+] docker-convert: temporary docker name: %s" % dockername)
 
@@ -87,7 +87,7 @@ class HubDocker:
         print("[+] docker-convert: parsing the flist")
         flistname = dockerimage.replace(":", "-").replace('/', '-')
 
-        flist = HubPublicFlist(self.config, "dockers", flistname)
+        flist = HubPublicFlist(self.config, username, flistname)
         flist.raw.initialize(tmpdir.name)
         flist.raw.insert(tmpdir.name)
         flist.raw.upload()

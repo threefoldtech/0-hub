@@ -498,11 +498,13 @@ def api_my_docker():
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
+    username = request.environ['username']
+
     if not request.form.get("image"):
         return api_response("missing docker image name", 400)
 
     docker = HubDocker(config)
-    response = docker.convert(request.form.get("image"))
+    response = docker.convert(request.form.get("image"), username)
 
     if response['status'] == 'success':
         return api_response(extra={'name': response['flist']})
