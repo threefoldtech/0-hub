@@ -493,6 +493,26 @@ def api_my_merge(target):
 
     return api_response()
 
+@app.route('/api/flist/me/docker', methods=['POST'])
+def api_my_docker():
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    if not request.form.get("image"):
+        return api_response("missing docker image name", 400)
+
+    docker = HubDocker(config)
+    response = docker.convert(request.form.get("image"))
+
+    if response['status'] == 'success':
+        return api_response(extra={'name': response['flist']})
+
+    if response['status'] == 'error':
+        return api_response(response['message'], 500)
+
+    return api_response("unexpected docker convert error", 500)
+
+
 ######################################
 #
 # API IMPLEMENTATION
