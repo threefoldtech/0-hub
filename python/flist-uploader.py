@@ -194,12 +194,14 @@ def docker_handler():
     if not request.environ['username']:
         return "Access denied."
 
+    username = request.environ['username']
+
     if request.method == 'POST':
         if not request.form.get("docker-input"):
             return internalRedirect("docker.html", "missing docker image name")
 
         docker = HubDocker(config)
-        response = docker.convert(request.form.get("docker-input"))
+        response = docker.convert(request.form.get("docker-input"), username)
 
         if response['status'] == 'success':
             return uploadSuccess(response['flist'], response['count'], "")
