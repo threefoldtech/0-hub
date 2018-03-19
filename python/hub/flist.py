@@ -78,6 +78,8 @@ class HubFlist:
         self.tmpdir = self.workspace("flist-")
         self.flist = self.open(rootpath, self.tmpdir.name)
 
+        print("[+] flist initialized: %s, %s\n" % (rootpath, self.tmpdir.name))
+
         return True
 
     def open(self, rootpath, sourcepath):
