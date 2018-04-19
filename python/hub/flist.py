@@ -108,10 +108,15 @@ class HubFlist:
         self.commit()
 
         r = self.backend()
+        self.proceed = 0
 
         def procFile(dirobj, type, name, subobj, args):
             fullpath = "%s/%s/%s" % (self.flist.rootpath, dirobj.dbobj.location, name)
-            print("[+] uploading: %s" % fullpath)
+            # print("[+] uploading: %s" % fullpath)
+
+            self.proceed += 1
+            if self.proceed % 150 == 0:
+                print("[+] still uploading [%d]" % self.proceed)
 
             """
             import hashlib
