@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
@@ -438,6 +439,16 @@ def api_my_rename(source, destination):
 
     return api_response()
 
+@app.route('/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>', methods=['GET'])
+def api_my_flist(source, linkname):
+    if not request.environ['username']:
+        return api_response("Access denied", 401)
+
+    username = request.environ['username']
+
+    return api_promote(username, sourcerepo, sourcefile, localname)
+
+
 @app.route('/api/flist/me/upload', methods=['POST'])
 def api_my_upload():
     if not request.environ['username']:
@@ -561,6 +572,25 @@ def api_symlink(username, source, linkname):
     os.chdir(cwd)
 
     return api_response()
+
+def api_promote(username, sourcerepo, sourcefile, targetname):
+    flist = HubPublicFlist(config, sourcerepo, sourcefile)
+    destination = HubPublicFlist(config, username, targetname)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    # remove previous symlink if existing
+    if os.path.exists(destination.target):
+        os.unlink(destination.target)
+
+    shutil.copy(flist.target, destination.target)
+
+    return api_response()
+
 
 def api_flist_upload(request, username, validate=False):
     # check if the post request has the file part
