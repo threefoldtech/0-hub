@@ -440,14 +440,13 @@ def api_my_rename(source, destination):
     return api_response()
 
 @app.route('/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>', methods=['GET'])
-def api_my_flist(source, linkname):
+def api_my_promote(sourcerepo, sourcefile, localname):
     if not request.environ['username']:
         return api_response("Access denied", 401)
 
     username = request.environ['username']
 
     return api_promote(username, sourcerepo, sourcefile, localname)
-
 
 @app.route('/api/flist/me/upload', methods=['POST'])
 def api_my_upload():
@@ -583,7 +582,7 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
-    # remove previous symlink if existing
+    # remove previous file if existing
     if os.path.exists(destination.target):
         os.unlink(destination.target)
 
