@@ -7,6 +7,9 @@ class HubMerger:
         self.config = config
         self.destination = HubPublicFlist(config, username, flistname)
 
+        # ensure user exists
+        self.destination.user_create()
+
     def merge(self, sources):
         items = {}
         merger = j.tools.flist.get_merger()
