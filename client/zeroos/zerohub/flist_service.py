@@ -4,12 +4,12 @@ class FlistService:
 
 
 
-    def flist_memerge_post(self, data, headers=None, query_params=None, content_type="application/json"):
+    def flist_memerge_post(self, target, data, headers=None, query_params=None, content_type="application/json"):
         """
         Merge multiple flist together
-        It is method for POST /flist/me/merge
+        It is method for POST /flist/me/merge/{target}
         """
-        uri = self.client.base_url + "/flist/me/merge"
+        uri = self.client.base_url + "/flist/me/merge/" + target
         return self.client.post(uri, data, headers, query_params, content_type)
 
 
@@ -39,6 +39,13 @@ class FlistService:
         uri = self.client.base_url + "/flist/me/"+flist+"/rename/"+target
         return self.client.get(uri, None, headers, query_params, content_type)
 
+    def flist_meflistpromote_get(self, srepo, sfile, dfile, headers=None, query_params=None, content_type="application/json"):
+        """
+        Promote one flist to your local repository
+        It is method for GET /flist/me/promote/{sourcerepo}/{sourcefile}/{localtarget}
+        """
+        uri = self.client.base_url + "/flist/me/promote/" + srepo + "/" + sfile + "/" + dfile
+        return self.client.get(uri, None, headers, query_params, content_type)
 
     def flist_meflist_delete(self, flist, headers=None, query_params=None, content_type="application/json"):
         """
