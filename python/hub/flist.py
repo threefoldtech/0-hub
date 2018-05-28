@@ -1,9 +1,11 @@
 import os
+import subprocess
 import tempfile
 import g8storclient
 import hashlib
 import tarfile
 import redis
+import json
 from js9 import j
 
 class HubFlist:
@@ -169,6 +171,9 @@ class HubFlist:
 
         return True
 
+    def loadsv2(self, source):
+        self.sourcev2 = source
+
     def validate(self):
         """
         This validate (confirm) all contents from the flist are available on the
@@ -235,6 +240,14 @@ class HubFlist:
         )
 
         return contents
+
+    def listingv2(self):
+        args = ["/opt/flister/flister", "--list", "--output", "json", "--archive", self.sourcev2]
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        return json.loads(output.decode('utf-8'))
 
     def checksum(self, target):
         """

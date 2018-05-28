@@ -383,8 +383,10 @@ def api_inspect(username, flist):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
-    flist.raw.loads(flist.target)
-    contents = flist.raw.listing()
+    # flist.raw.loads(flist.target)
+    # contents = flist.raw.listing()
+    flist.raw.loadsv2(flist.target)
+    contents = flist.raw.listingv2()
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
