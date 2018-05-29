@@ -243,11 +243,25 @@ class HubFlist:
 
     def listingv2(self):
         args = ["/opt/flister/flister", "--list", "--output", "json", "--archive", self.sourcev2]
+
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
         p.wait()
 
         return json.loads(output.decode('utf-8'))
+
+    def create(self, rootdir):
+        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
+        args = ["/opt/flister/flister", "--create", rootdir, "--archive", self.target, "--upload", backend]
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        print(output)
+        print(err)
+
+        return output.decode('utf-8')
 
     def checksum(self, target):
         """

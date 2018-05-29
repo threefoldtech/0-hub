@@ -620,6 +620,11 @@ def api_flist_upload(request, username, validate=False):
     cleanfilename = file_from_flist(filename)
     flist = HubPublicFlist(config, username, cleanfilename)
 
+    workspace = flist.raw.workspace()
+    flist.raw.unpack(source, workspace.name)
+    flist.raw.create(workspace.name)
+
+    """
     # validate if the flist exists
     if not validate:
         # extracting archive to workspace
@@ -640,6 +645,7 @@ def api_flist_upload(request, username, validate=False):
     flist.raw.commit()
     flist.user_create()
     flist.raw.pack(flist.target)
+    """
 
     # removing uploaded source file
     os.unlink(source)
