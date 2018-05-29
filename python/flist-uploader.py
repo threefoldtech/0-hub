@@ -622,7 +622,7 @@ def api_flist_upload(request, username, validate=False):
 
     workspace = flist.raw.workspace()
     flist.raw.unpack(source, workspace.name)
-    flist.raw.create(workspace.name)
+    flist.raw.create(workspace.name, flist.target)
 
     """
     # validate if the flist exists

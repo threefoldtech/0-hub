@@ -250,9 +250,9 @@ class HubFlist:
 
         return json.loads(output.decode('utf-8'))
 
-    def create(self, rootdir):
+    def create(self, rootdir, target):
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
-        args = ["/opt/flister/flister", "--create", rootdir, "--archive", self.target, "--upload", backend]
+        args = ["/opt/flister/flister", "--create", rootdir, "--archive", target, "--upload", backend]
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
