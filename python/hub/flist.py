@@ -67,7 +67,7 @@ class HubFlist:
 
         self.ensure(target)
 
-        print(filepath)
+        print("[+] upacking: %s" % filepath)
         t = tarfile.open(filepath, "r:*")
         t.extractall(path=target)
 
