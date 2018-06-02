@@ -79,7 +79,7 @@ class HubFlist:
         p = subprocess.Popen(args)
         p.wait()
 
-        return filescount
+        return 0
 
     def initialize(self, rootpath, prefix="flist-"):
         self.tmpdir = self.workspace("flist-")
