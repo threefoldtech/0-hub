@@ -68,11 +68,16 @@ class HubFlist:
         self.ensure(target)
 
         print("[+] upacking: %s" % filepath)
+        """
         t = tarfile.open(filepath, "r:*")
         t.extractall(path=target)
 
         filescount = len(t.getnames())
         t.close()
+        """
+        args = ["tar", "-xpf", filepath, "-C", target]
+        p = subprocess.Popen(args)
+        p.wait()
 
         return filescount
 
