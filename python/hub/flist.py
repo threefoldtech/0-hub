@@ -254,14 +254,16 @@ class HubFlist:
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
         args = ["/opt/flister/flister", "--create", rootdir, "--archive", target, "--upload", backend]
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
+        # p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        # (output, err) = p.communicate()
+        p = subprocess.Popen(args)
         p.wait()
 
-        print(output)
-        print(err)
+        # print(output)
+        # print(err)
 
-        return output.decode('utf-8')
+        # return output.decode('utf-8')
+        return True
 
     def checksum(self, target):
         """
