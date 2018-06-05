@@ -622,7 +622,7 @@ def api_flist_upload(request, username, validate=False):
 
     workspace = flist.raw.workspace()
     flist.raw.unpack(source, workspace.name)
-    flist.raw.create(workspace.name, flist.target)
+    stats = flist.raw.create(workspace.name, flist.target)
 
     """
     # validate if the flist exists
@@ -650,7 +650,7 @@ def api_flist_upload(request, username, validate=False):
     # removing uploaded source file
     os.unlink(source)
 
-    return {'status': 'success', 'flist': flist.filename, 'home': username, 'count': 0, 'timing': {}}
+    return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
 
 def api_repositories():
     root = sorted(os.listdir(config['public-directory']))
