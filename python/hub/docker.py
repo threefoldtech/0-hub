@@ -89,7 +89,7 @@ class HubDocker:
 
         flist = HubPublicFlist(self.config, username, flistname)
         flist.user_create()
-        flist.create(tmpdir.name, flist.target)
+        flist.raw.create(tmpdir.name, flist.target)
 
         """
         flist.raw.initialize(tmpdir.name)
