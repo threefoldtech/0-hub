@@ -72,7 +72,7 @@ def uploadSuccess(flistname, filescount, home, username=None):
         'username': username,
         'accounts': request.environ['accounts'],
         'flistname': flistname,
-        'filescount': filescount,
+        'filescount': 0,
         'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
         'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
     }
@@ -139,7 +139,7 @@ def upload_file():
         response = api_flist_upload(request, username)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], response['home'])
+            return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload.html", response['message'])
@@ -157,7 +157,7 @@ def upload_file_flist():
         response = api_flist_upload(request, username, validate=True)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], response['home'])
+            return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload-flist.html", response['message'])
@@ -205,7 +205,7 @@ def docker_handler():
         response = docker.convert(request.form.get("docker-input"), username)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], "")
+            return uploadSuccess(response['flist'], response['stats'], "")
 
         if response['status'] == 'error':
             return internalRedirect("docker.html", response['message'])
@@ -460,10 +460,10 @@ def api_my_upload():
     response = api_flist_upload(request, username)
     if response['status'] == 'success':
         if config['DEBUG']:
-            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
+            return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
-            return api_response(extra={'name': response['flist'], 'files': response['count']})
+            return api_response(extra={'name': response['flist'], 'files': response['stats']})
 
     if response['status'] == 'error':
         return api_response(response['message'], 500)
@@ -478,10 +478,10 @@ def api_my_upload_flist():
     response = api_flist_upload(request, username, validate=True)
     if response['status'] == 'success':
         if config['DEBUG']:
-            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
+            return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
-            return api_response(extra={'name': response['flist'], 'files': response['count']})
+            return api_response(extra={'name': response['flist'], 'files': response['stats']})
 
     if response['status'] == 'error':
         return api_response(response['message'], 500)
