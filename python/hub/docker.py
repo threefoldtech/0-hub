@@ -88,11 +88,15 @@ class HubDocker:
         flistname = dockerimage.replace(":", "-").replace('/', '-')
 
         flist = HubPublicFlist(self.config, username, flistname)
+        flist.user_create()
+        flist.create(tmpdir.name, flist.target)
+
+        """
         flist.raw.initialize(tmpdir.name)
         flist.raw.insert(tmpdir.name)
         flist.raw.upload()
-        flist.user_create()
         flist.raw.pack(flist.target)
+        """
 
         print("[+] docker-convert: cleaning temporary files")
         tmpdir.cleanup()
