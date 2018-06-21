@@ -90,11 +90,11 @@ def sync_metadata(url, destination):
         yield item
 
 
-def _sync_metadata(url, destination):
+def _sync_metadata(url, destination, filter=None):
     flists = requests.get(url + 'api/flist').json()
     for path in flists:
         path = path.strip()
-        if path:
+        if path and (not filter or filter in path):
             dpath = os.path.join(destination, path)
             furl = url + path
             if not os.path.exists(dpath):
@@ -123,8 +123,9 @@ def _sync_metadata(url, destination):
 @click.option('-s', '--slave', help='Salve ARDB host', required=True)
 @click.option('-sp', '--slave-port', help='Slave ARDB port', type=int, default=16379)
 @click.option('-sd', '--slave-db', help='Slave ARDB db index', type=int, default=0)
-def fullsync(url, destination, master, master_port, master_db, slave, slave_port, slave_db):
-    for flist in _sync_metadata(url, destination):
+@click.option('-f', '--filter', help='Flist filter', default=None)
+def fullsync(url, destination, master, master_port, master_db, slave, slave_port, slave_db, filter):
+    for flist in _sync_metadata(url, destination, filter):
         _sync_data(flist, master, master_port, master_db, slave, slave_port, slave_db)
 
 
