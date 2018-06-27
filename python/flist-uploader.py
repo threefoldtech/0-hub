@@ -205,7 +205,7 @@ def docker_handler():
         response = docker.convert(request.form.get("docker-input"), username)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['stats'], "")
+            return uploadSuccess(response['flist'], 0, "")
 
         if response['status'] == 'error':
             return internalRedirect("docker.html", response['message'])
