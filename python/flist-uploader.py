@@ -586,6 +586,7 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     if os.path.exists(destination.target):
         os.unlink(destination.target)
 
+    print("[+] promote: %s -> %s" % (flist.target, destination.target))
     shutil.copy(flist.target, destination.target)
 
     return api_response()
