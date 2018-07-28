@@ -275,7 +275,7 @@ def show_flist_json(username, flist):
         'uploader': username,
         'source': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
         'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
-        'checksum': flist_md5(username, flist)
+        'checksum': flist.checksum
     }
 
     response = make_response(json.dumps(data) + "\n")
@@ -373,7 +373,7 @@ def api_user_contents(username):
 
     return response
 
-@app.route('/api/flist/<username>/<flist>')
+@app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO'])
 def api_inspect(username, flist):
     flist = HubPublicFlist(config, username, flist)
 
@@ -383,8 +383,11 @@ def api_inspect(username, flist):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
-    flist.raw.loads(flist.target)
-    contents = flist.raw.listing()
+    if request.method == 'GET':
+        contents = api_contents(flist)
+
+    if request.method == 'INFO':
+        contents = api_flist_info(flist)
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -660,6 +663,31 @@ def api_repositories():
         output.append({'name': user, 'official': official})
 
     return output
+
+def api_contents(flist):
+    flist.raw.loads(flist.target)
+    contents = flist.raw.listing()
+
+    return contents
+
+def api_flist_info(flist):
+    stat = os.lstat(flist.target)
+    file = os.path.basename(flist.target)
+
+    contents = {
+        'name': file,
+        'size': stat.st_size,
+        'updated': int(stat.st_mtime),
+        'type': 'regular',
+        'md5': flist.checksum,
+    }
+
+    if S_ISLNK(stat.st_mode):
+        contents['type'] = 'symlink'
+        contents['target'] = target
+        contents['size'] = 0
+
+    return contents
 
 def api_response(error=None, code=200, extra=None):
     reply = {"status": "success"}
