@@ -672,7 +672,7 @@ def api_repositories():
 
 def api_contents(flist):
     flist.raw.loadsv2(flist.target)
-    contents = flist.raw.listing()
+    contents = flist.raw.listingv2()
 
     return contents
 
