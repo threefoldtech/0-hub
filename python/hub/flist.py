@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tempfile
-import g8storclient
+# import g8storclient
 import hashlib
 import tarfile
 import redis
