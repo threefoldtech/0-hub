@@ -621,6 +621,7 @@ def api_flist_upload(request, username, validate=False):
 
     cleanfilename = file_from_flist(filename)
     flist = HubPublicFlist(config, username, cleanfilename)
+    flist.user_create()
 
     workspace = flist.raw.workspace()
     flist.raw.unpack(source, workspace.name)
