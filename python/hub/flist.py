@@ -261,6 +261,10 @@ class HubFlist:
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
         args = [self.zflist, "--create", rootdir, "--archive", target, "--backend", backend, '--json']
 
+        if self.config['backend-internal-pass']:
+            args.append('--password')
+            args.append(self.config['backend-internal-pass'])
+
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
         # p = subprocess.Popen(args)
