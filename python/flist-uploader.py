@@ -53,7 +53,7 @@ def allowed_file(filename, validate=False):
     return False
 
 def globalTemplate(filename, args):
-    args['debug'] = config['DEBUG']
+    args['debug'] = config['debug']
     return render_template(filename, **args)
 
 def file_from_flist(filename):
@@ -73,8 +73,8 @@ def uploadSuccess(flistname, filescount, home, username=None):
         'accounts': request.environ['accounts'],
         'flistname': flistname,
         'filescount': 0,
-        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
-        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'flisturl': "%s/%s/%s" % (config['public-website'], username, flistname),
+        'ardbhost': 'zdb://%s:%d' % (config['backend-public-host'], config['backend-public-port']),
     }
 
     return globalTemplate("success.html", settings)
@@ -240,8 +240,8 @@ def show_flist_md(username, flist):
     variables = {
         'targetuser': username,
         'flistname': flist.filename,
-        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist.filename),
-        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'flisturl': "%s/%s/%s" % (config['public-website'], username, flist.filename),
+        'ardbhost': 'zdb://%s:%d' % (config['backend-public-host'], config['backend-public-port']),
         'checksum': flist.checksum
     }
 
@@ -255,8 +255,8 @@ def show_flist_txt(username, flist):
 
     text  = "File:     %s\n" % flist.filename
     text += "Uploader: %s\n" % username
-    text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist.filename)
-    text += "Storage:  ardb://%s:%d\n" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+    text += "Source:   %s/%s/%s\n" % (config['public-website'], username, flist.filename)
+    text += "Storage:  zdb://%s:%d\n" % (config['backend-public-host'], config['backend-public-port'])
     text += "Checksum: %s\n" % flist.checksum
 
     response = make_response(text)
@@ -273,8 +273,8 @@ def show_flist_json(username, flist):
     data = {
         'flist': flist,
         'uploader': username,
-        'source': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
-        'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'source': "%s/%s/%s" % (config['public-website'], username, flist),
+        'storage': "zdb://%s:%d" % (config['backend-public-host'], config['backend-public-port']),
         'checksum': flist.checksum
     }
 
@@ -460,7 +460,7 @@ def api_my_upload():
 
     response = api_flist_upload(request, username)
     if response['status'] == 'success':
-        if config['DEBUG']:
+        if config['debug']:
             return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
@@ -478,7 +478,7 @@ def api_my_upload_flist():
 
     response = api_flist_upload(request, username, validate=True)
     if response['status'] == 'success':
-        if config['DEBUG']:
+        if config['debug']:
             return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
@@ -665,7 +665,7 @@ def api_repositories():
         if not os.path.isdir(target):
             continue
 
-        official = (user in config['PUBLIC_OFFICIALS'])
+        official = (user in config['official-repositories'])
         output.append({'name': user, 'official': official})
 
     return output
@@ -714,4 +714,4 @@ def api_response(error=None, code=200, extra=None):
 #
 ######################################
 print("[+] listening")
-app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
+app.run(host="0.0.0.0", port=5555, debug=config['debug'], threaded=True)

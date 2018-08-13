@@ -6,11 +6,12 @@ import hashlib
 import tarfile
 import redis
 import json
-from js9 import j
 
 class HubFlist:
     def __init__(self, config):
         self.config = config
+
+        self.zflist = "/opt/0-flist/zflist/zflist"
 
         """
         self.backopt = {
@@ -22,8 +23,9 @@ class HubFlist:
         """
 
         self.backopt = {
-            'host': config['PRIVATE_ARDB_HOST'],
-            'port': config['PRIVATE_ARDB_PORT'],
+            'host': config['backend-internal-host'],
+            'port': config['backend-internal-port'],
+            'nspass': config['backend-internal-pass'],
             'password': None,
             'ssl': False
         }
@@ -247,7 +249,7 @@ class HubFlist:
         return contents
 
     def listingv2(self):
-        args = ["/opt/flister/flister", "--list", "--action", "json", "--archive", self.sourcev2]
+        args = [self.zflist, "--list", "--action", "json", "--archive", self.sourcev2]
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
@@ -257,7 +259,7 @@ class HubFlist:
 
     def create(self, rootdir, target):
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
-        args = ["/opt/flister/flister", "--create", rootdir, "--archive", target, "--backend", backend, '--json']
+        args = [self.zflist, "--create", rootdir, "--archive", target, "--backend", backend, '--json']
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
