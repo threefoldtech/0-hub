@@ -2,17 +2,18 @@
 # You should adapt this part to your usage
 #
 config = {
-    'PUBLIC_ARDB_HOST': "hub.tld",
-    'PUBLIC_ARDB_PORT': 16379,
+    'backend-internal-host': "my-zdb",
+    'backend-internal-port': 9900,
+    'backend-internal-pass': '',
 
-    'PRIVATE_ARDB_HOST': "",
-    'PRIVATE_ARDB_PORT': 26379,
+    'backend-public-host': "hub.tld",
+    'backend-public-port': 9900,
 
-    'PUBLIC_WEBADD': "https://hub.tld",
+    'public-website': "https://hub.tld",
 
-    'PUBLIC_IGNORE': ['.', '..', '.keep'],
-    'PUBLIC_OFFICIALS': ['official-apps', 'dockers'],
+    'ignored-files': ['.', '..', '.keep'],
+    'official-repositories': ['official-apps', 'dockers'],
 
     # enable debug or production mode
-    'DEBUG': True,
+    'debug': True,
 }
