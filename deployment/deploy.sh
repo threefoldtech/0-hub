@@ -56,7 +56,14 @@ zeroflist() {
 
 hub() {
     git clone -b zflist https://github.com/threefoldtech/0-hub $1
+
     cp $1/python/config.py.sample $1/python/config.py
+    cp $1/Caddyfile.sample $1/Caddyfile
+
+    sed -i "s/__PYTHON_HOST__:5000/127.0.0.1:5555/g" $1/Caddyfile
+    sed -i "s/0.0.0.0:2015/0.0.0.0:80/g" $1/Caddyfile
+
+    # FIXME: missing caddy
 }
 
 set -ex
