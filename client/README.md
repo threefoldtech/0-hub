@@ -4,7 +4,7 @@ This is the official python client module which allows you to browse and upload 
 # Installation
 You can install this module via pip:
 ```
-pip install -e 'git+https://github.com/zero-os/0-hub#egg=zerohub&subdirectory=client'
+pip install -e 'git+https://github.com/threefoldtech/0-hub#egg=zerohub&subdirectory=client'
 ```
 
 # Usage
@@ -16,7 +16,7 @@ Here is a sample usage, it's better to wrap this module. Some better version wil
 ```python
 from zeroos.zerohub import Client as ZHubClient
 
-client = ZHubClient("https://hub.gig.tech/api")
+client = ZHubClient("https://hub.grid.tf/api")
 api = client.api
 ```
 
