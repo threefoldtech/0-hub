@@ -585,6 +585,10 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
+    # ensure target exists
+    if not destination.user_exists:
+        destination.user_create()
+
     # remove previous file if existing
     if os.path.exists(destination.target):
         os.unlink(destination.target)
@@ -592,7 +596,18 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     print("[+] promote: %s -> %s" % (flist.target, destination.target))
     shutil.copy(flist.target, destination.target)
 
-    return api_response()
+    status = {
+        'source': {
+            'username': flist.username,
+            'filename': flist.filename,
+        },
+        'destination': {
+            'username': destination.username,
+            'filename': destination.filename,
+        }
+    }
+
+    return api_response(extra=status)
 
 
 def api_flist_upload(request, username, validate=False):
