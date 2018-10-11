@@ -6,7 +6,6 @@ import tarfile
 import redis
 import json
 import shutil
-from js9 import j
 
 class HubFlist:
     def __init__(self, config):
