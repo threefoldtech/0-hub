@@ -315,7 +315,7 @@ class HubPublicFlist:
 
         self.raw = HubFlist(config)
 
-    def commit():
+    def commit(self):
         if self.raw.sourcev2 != self.target:
             self.user_create()
             shutil.copyfile(self.raw.sourcev2, self.target)
