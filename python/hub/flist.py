@@ -259,7 +259,7 @@ class HubFlist:
 
     def validatev2(self):
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
-        args = ["/opt/flister/flister", "--list", "--action", "check", "--archive", self.sourcev2, "--backend", backend, "--json"]
+        args = [self.zflist, "--list", "--action", "check", "--archive", self.sourcev2, "--backend", backend, "--json"]
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
