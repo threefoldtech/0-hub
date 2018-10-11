@@ -6,6 +6,7 @@ import hashlib
 import tarfile
 import redis
 import json
+import shutil
 from js9 import j
 
 class HubFlist:
@@ -255,6 +256,16 @@ class HubFlist:
 
         return json.loads(output.decode('utf-8'))
 
+    def validatev2(self):
+        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
+        args = ["/opt/flister/flister", "--list", "--action", "check", "--archive", self.sourcev2, "--backend", backend, "--json"]
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        return json.loads(output.decode('utf-8'))
+
     def create(self, rootdir, target):
         backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
         args = ["/opt/flister/flister", "--create", rootdir, "--archive", target, "--backend", backend, '--json']
@@ -298,6 +309,11 @@ class HubPublicFlist:
             self.filename += ".flist"
 
         self.raw = HubFlist(config)
+
+    def commit():
+        if self.raw.sourcev2 != self.target:
+            self.user_create()
+            shutil.copyfile(self.raw.sourcev2, self.target)
 
     @property
     def target(self):

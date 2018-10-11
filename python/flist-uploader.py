@@ -637,9 +637,22 @@ def api_flist_upload(request, username, validate=False):
     cleanfilename = file_from_flist(filename)
     flist = HubPublicFlist(config, username, cleanfilename)
 
-    workspace = flist.raw.workspace()
-    flist.raw.unpack(source, workspace.name)
-    stats = flist.raw.create(workspace.name, flist.target)
+    # it's a new flist, let's do the normal flow
+    if not validate:
+        workspace = flist.raw.workspace()
+        flist.raw.unpack(source, workspace.name)
+        stats = flist.raw.create(workspace.name, flist.target)
+
+    # we have an existing flist and checking contents
+    # we don't need to create the flist, we just ensure the
+    # contents is on the backend
+    else:
+        flist.raw.loadsv2(source)
+        stats = flist.raw.validatev2()
+        if stats['failure'] > 0:
+            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
+
+        flist.commit()
 
     """
     # validate if the flist exists
