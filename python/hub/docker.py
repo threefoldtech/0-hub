@@ -74,8 +74,16 @@ class HubDocker:
         command, args = self.container_boot(cn)
 
         boot = {
-            'startup.entry':      {'name': "core.system", 'running_delay': -1},
-            'startup.entry.args': {'name': command, 'args': args}
+            'startup': {
+                'entry': {
+                    'name': "core.system",
+                    'running_delay': -1,
+                    'args': {
+                        'name': command,
+                        'args': args
+                    }
+                }
+            }
         }
 
         with open(os.path.join(tmpdir.name, '.startup.toml'), 'w') as f:
