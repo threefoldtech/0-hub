@@ -6,6 +6,7 @@ import subprocess
 import pytoml as toml
 from hub.flist import HubPublicFlist
 
+
 class HubDocker:
     def __init__(self, config):
         self.dockerclient = docker.from_env()
@@ -14,6 +15,8 @@ class HubDocker:
     def container_boot(self, cn):
         command = []
         args = []
+        env = {}
+        cwd = '/'
 
         if cn.attrs['Config']['Entrypoint']:
             command = cn.attrs['Config']['Entrypoint'][0]
@@ -23,7 +26,15 @@ class HubDocker:
             command = cn.attrs['Config']['Cmd'][0]
             args = cn.attrs['Config']['Cmd'][1:]
 
-        return command, args
+        if cn.attrs['Config']['Env']:
+            for entry in cn.attrs['Config']['Env']:
+                k, v = entry.split("=")
+                env[k] = v
+
+        if cn.attrs['Config']['WorkingDir']:
+            cwd = cn.attrs['Config']['WorkingDir']
+
+        return command, args, env, cwd
 
     def convert(self, dockerimage, username="dockers"):
         dockername = uuid.uuid4().hex
@@ -71,7 +82,7 @@ class HubDocker:
         # docker init command to container startup command
         #
         print("[+] docker-convert: creating container entrypoint")
-        command, args = self.container_boot(cn)
+        command, args, env, cwd = self.container_boot(cn)
 
         boot = {
             'startup': {
@@ -80,7 +91,9 @@ class HubDocker:
                     'running_delay': -1,
                     'args': {
                         'name': command,
-                        'args': args
+                        'args': args,
+                        'env': env,
+                        'dir': cwd,
                     }
                 }
             }
