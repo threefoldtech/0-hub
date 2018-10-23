@@ -88,7 +88,6 @@ class HubDocker:
             'startup': {
                 'entry': {
                     'name': "core.system",
-                    'running_delay': -1,
                     'args': {
                         'name': command,
                         'args': args,
