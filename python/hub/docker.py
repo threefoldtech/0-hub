@@ -28,7 +28,7 @@ class HubDocker:
 
         if cn.attrs['Config']['Env']:
             for entry in cn.attrs['Config']['Env']:
-                k, v = entry.split("=")
+                k, e, v = entry.partition("=")
                 env[k] = v
 
         if cn.attrs['Config']['WorkingDir']:
