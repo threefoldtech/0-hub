@@ -10,7 +10,6 @@ from config import config
 from hub.flist import HubFlist, HubPublicFlist
 from hub.itsyouonline import ItsYouChecker
 from hub.docker import HubDocker
-from hub.merge import HubMerger
 
 #
 # runtime configuration
@@ -178,8 +177,8 @@ def flist_merge():
         if data['error']:
             return internalRedirect("merge.html", data['error'])
 
-        merger = HubMerger(config, username, data['target'])
-        status = merger.merge(data['sources'])
+        flist = HubPublicFlist(config, username, data['target'])
+        status = flist.raw.merge(data['sources'])
 
         if not status == True:
             variables = {'error': status}
@@ -500,8 +499,8 @@ def api_my_merge(target):
     if data['error'] != None:
         return api_response(data['error'], 500)
 
-    merger = HubMerger(config, username, data['target'])
-    status = merger.merge(data['sources'])
+    flist = HubPublicFlist(config, username, data['target'])
+    status = flist.raw.merge(data['sources'])
 
     if not status == True:
         return api_response(status, 500)

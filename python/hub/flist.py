@@ -303,6 +303,16 @@ class HubFlist:
 
         return hash_md5.hexdigest()
 
+    def merge(self, sources):
+        args = [self.zflist, "--archive", self.sourcev2, "--json", "--merge"] + sources
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        # return json.loads(output.decode('utf-8'))
+        return True
+
 class HubPublicFlist:
     def __init__(self, config, username, flistname):
         self.rootpath = config['public-directory']
