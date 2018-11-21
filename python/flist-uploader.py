@@ -178,7 +178,7 @@ def flist_merge():
             return internalRedirect("merge.html", data['error'])
 
         flist = HubPublicFlist(config, username, data['target'])
-        status = flist.raw.merge(data['sources'])
+        status = flist.merge(data['sources'])
 
         if not status == True:
             variables = {'error': status}
@@ -500,7 +500,7 @@ def api_my_merge(target):
         return api_response(data['error'], 500)
 
     flist = HubPublicFlist(config, username, data['target'])
-    status = flist.raw.merge(data['sources'])
+    status = flist.merge(data['sources'])
 
     if not status == True:
         return api_response(status, 500)

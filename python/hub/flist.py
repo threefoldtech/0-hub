@@ -304,7 +304,12 @@ class HubFlist:
         return hash_md5.hexdigest()
 
     def merge(self, sources):
-        args = [self.zflist, "--archive", self.sourcev2, "--json", "--merge"] + sources
+        fixedsources = []
+        for source in sources:
+            fixedsources.append("--merge")
+            fixedsources.append(os.path.join(self.config['public-directory'], source))
+
+        args = [self.zflist, "--archive", self.sourcev2, "--json"] + sources
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
@@ -355,4 +360,5 @@ class HubPublicFlist:
     def checksum(self):
         return self.raw.checksum(self.target)
 
-
+    def merge(self, sources):
+        return self.raw.merge(self.target, sources)
