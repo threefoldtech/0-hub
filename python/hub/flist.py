@@ -303,13 +303,13 @@ class HubFlist:
 
         return hash_md5.hexdigest()
 
-    def merge(self, sources):
+    def merge(self, target, sources):
         fixedsources = []
         for source in sources:
             fixedsources.append("--merge")
             fixedsources.append(os.path.join(self.config['public-directory'], source))
 
-        args = [self.zflist, "--archive", self.sourcev2, "--json"] + sources
+        args = [self.zflist, "--archive", target, "--json"] + fixedsources
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
