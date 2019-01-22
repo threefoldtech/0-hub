@@ -15,17 +15,32 @@ from hub.docker import HubDocker
 # runtime configuration
 # theses location should works out-of-box if you use default settings
 #
-thispath = os.path.dirname(os.path.realpath(__file__))
-basepath = os.path.join(thispath, "..")
+if not 'userdata-root-path' in config:
+    config['userdata-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../public")
 
-config['public-directory'] = os.path.join(basepath, "public/users/")
-config['flist-work-directory'] = os.path.join(basepath, "workdir/temp")
-config['docker-work-directory'] = os.path.join(basepath, "workdir/temp")
-config['upload-directory'] = os.path.join(basepath, "workdir/distfiles")
-config['allowed-extensions'] = set(['.tar.gz'])
+if not 'workdir-root-path' in config:
+    config['workdir-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../workdir")
 
+if not 'public-directory' in config:
+    config['public-directory'] = os.path.join(config['userdata-root-path'], "users")
+
+if not 'flist-work-directory' in config:
+    config['flist-work-directory'] = os.path.join(config['workdir-root-path'], "temp")
+
+if not 'docker-work-directory' in config:
+    config['docker-work-directory'] = os.path.join(config['workdir-root-path'], "temp")
+
+if not 'upload-directory' in config:
+    config['upload-directory'] = os.path.join(config['workdir-root-path'], "distfiles")
+
+if not 'allowed-extensions' in config:
+    config['allowed-extensions'] = set(['.tar.gz'])
+
+print("[+] user  directory : %s" % config['userdata-root-path'])
+print("[+] works directory : %s" % config['workdir-root-path'])
 print("[+] upload directory: %s" % config['upload-directory'])
 print("[+] flist creation  : %s" % config['flist-work-directory'])
+print("[+] docker creation : %s" % config['docker-work-directory'])
 print("[+] public directory: %s" % config['public-directory'])
 
 #
