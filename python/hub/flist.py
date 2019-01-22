@@ -11,7 +11,10 @@ class HubFlist:
     def __init__(self, config):
         self.config = config
 
-        self.zflist = "/opt/0-flist/zflist/zflist"
+        if 'zflist-bin' not in config:
+            config['zflist-bin'] = "/opt/0-flist/zflist/zflist"
+
+        self.zflist = config['zflist-bin']
 
         """
         self.backopt = {
