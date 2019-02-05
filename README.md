@@ -97,7 +97,7 @@ Simple example how to use all feature to do some flist promotion. In this case, 
 
 ```
 curl -b "active-user=userX; caddyoauth=[...jwt...]" \
-    "https://hub.gig.tech/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
+    "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
 ### Client
@@ -105,7 +105,7 @@ There is a python client which can be found on the [client](client) directory.
 This make all of this more easy.
 
 # Backend
-Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is (0-db)[https://github.com/threefoldtech/0-db]
+Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db)
 
 # Documentation
 For full documentation, see the [`/docs`](/docs) directory.
