@@ -356,7 +356,7 @@ class HubPublicFlist:
 
     @property
     def file_exists(self):
-        print(self.target)
+        print("[+] flist exists: %s" % self.target)
         return (os.path.isfile(self.target) or os.path.islink(self.target))
 
     @property
