@@ -313,6 +313,7 @@ class HubFlist:
             fixedsources.append(os.path.join(self.config['public-directory'], source))
 
         args = [self.zflist, "--archive", target, "--json"] + fixedsources
+        print(args)
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
