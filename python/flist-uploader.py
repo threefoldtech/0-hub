@@ -124,6 +124,14 @@ def flist_merge_data(sources, target):
         data['error'] = "no source found"
         return data
 
+    # ensure .flist extension to each sources
+    fsources = []
+    for source in data['sources']:
+        cleaned = source if source.endswith(".flist") else source + ".flist"
+        fsources.append(cleaned)
+
+    data['sources'] = fsources
+
     if not data['target']:
         data['error'] = "missing build (target) name"
         return data
