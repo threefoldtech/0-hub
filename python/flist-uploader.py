@@ -127,10 +127,24 @@ def flist_merge_data(sources, target):
     # ensure .flist extension to each sources
     fsources = []
     for source in data['sources']:
+        # missing username/filename
+        if "/" not in source:
+            data['error'] = "malformed source filename"
+            return data
+
         cleaned = source if source.endswith(".flist") else source + ".flist"
         fsources.append(cleaned)
 
     data['sources'] = fsources
+
+    # ensure each sources exists
+    for source in data['sources']:
+        temp = source.split("/")
+        item = HubPublicFlist(config, temp[0], temp[1])
+
+        if not item.file_exists:
+            data['error'] = "%s does not exists" % source
+            return data
 
     if not data['target']:
         data['error'] = "missing build (target) name"
