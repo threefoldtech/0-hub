@@ -20,7 +20,12 @@ class HubDocker:
 
         if cn.attrs['Config']['Entrypoint']:
             command = cn.attrs['Config']['Entrypoint'][0]
-            args = cn.attrs['Config']['Cmd']
+
+            if len(cn.attrs['Config']['Entrypoint']) > 1:
+                args = cn.attrs['Config']['Entrypoint'][1:]
+
+            else:
+                args = cn.attrs['Config']['Cmd']
 
         else:
             command = cn.attrs['Config']['Cmd'][0]
