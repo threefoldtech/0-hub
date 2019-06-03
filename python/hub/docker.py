@@ -58,6 +58,9 @@ class HubDocker:
         except docker.errors.ImageNotFound:
             return {'status': 'error', 'message': 'docker image not found'}
 
+        except docker.errors.APIError:
+            return {'status': 'error', 'message': 'could not pull this image'}
+
         #
         # building init-command line
         #
