@@ -6,6 +6,7 @@ import subprocess
 import pytoml as toml
 from hub.flist import HubPublicFlist
 
+
 class HubDocker:
     def __init__(self, config):
         self.dockerclient = docker.from_env()
@@ -14,16 +15,31 @@ class HubDocker:
     def container_boot(self, cn):
         command = []
         args = []
+        env = {}
+        cwd = '/'
 
         if cn.attrs['Config']['Entrypoint']:
             command = cn.attrs['Config']['Entrypoint'][0]
-            args = cn.attrs['Config']['Cmd']
+
+            if len(cn.attrs['Config']['Entrypoint']) > 1:
+                args = cn.attrs['Config']['Entrypoint'][1:]
+
+            else:
+                args = cn.attrs['Config']['Cmd']
 
         else:
             command = cn.attrs['Config']['Cmd'][0]
             args = cn.attrs['Config']['Cmd'][1:]
 
-        return command, args
+        if cn.attrs['Config']['Env']:
+            for entry in cn.attrs['Config']['Env']:
+                k, e, v = entry.partition("=")
+                env[k] = v
+
+        if cn.attrs['Config']['WorkingDir']:
+            cwd = cn.attrs['Config']['WorkingDir']
+
+        return command, args, env, cwd
 
     def convert(self, dockerimage, username="dockers"):
         dockername = uuid.uuid4().hex
@@ -41,6 +57,9 @@ class HubDocker:
 
         except docker.errors.ImageNotFound:
             return {'status': 'error', 'message': 'docker image not found'}
+
+        except docker.errors.APIError:
+            return {'status': 'error', 'message': 'could not pull this image'}
 
         #
         # building init-command line
@@ -71,11 +90,20 @@ class HubDocker:
         # docker init command to container startup command
         #
         print("[+] docker-convert: creating container entrypoint")
-        command, args = self.container_boot(cn)
+        command, args, env, cwd = self.container_boot(cn)
 
         boot = {
-            'startup.entry':      {'name': "core.system", 'running_delay': -1},
-            'startup.entry.args': {'name': command, 'args': args}
+            'startup': {
+                'entry': {
+                    'name': "core.system",
+                    'args': {
+                        'name': command,
+                        'args': args,
+                        'env': env,
+                        'dir': cwd,
+                    }
+                }
+            }
         }
 
         with open(os.path.join(tmpdir.name, '.startup.toml'), 'w') as f:
@@ -88,11 +116,15 @@ class HubDocker:
         flistname = dockerimage.replace(":", "-").replace('/', '-')
 
         flist = HubPublicFlist(self.config, username, flistname)
+        flist.user_create()
+        flist.raw.create(tmpdir.name, flist.target)
+
+        """
         flist.raw.initialize(tmpdir.name)
         flist.raw.insert(tmpdir.name)
         flist.raw.upload()
-        flist.user_create()
         flist.raw.pack(flist.target)
+        """
 
         print("[+] docker-convert: cleaning temporary files")
         tmpdir.cleanup()

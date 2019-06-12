@@ -10,23 +10,37 @@ from config import config
 from hub.flist import HubFlist, HubPublicFlist
 from hub.itsyouonline import ItsYouChecker
 from hub.docker import HubDocker
-from hub.merge import HubMerger
 
 #
 # runtime configuration
 # theses location should works out-of-box if you use default settings
 #
-thispath = os.path.dirname(os.path.realpath(__file__))
-basepath = os.path.join(thispath, "..")
+if not 'userdata-root-path' in config:
+    config['userdata-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../public")
 
-config['public-directory'] = os.path.join(basepath, "public/users/")
-config['flist-work-directory'] = os.path.join(basepath, "workdir/temp")
-config['docker-work-directory'] = os.path.join(basepath, "workdir/temp")
-config['upload-directory'] = os.path.join(basepath, "workdir/distfiles")
-config['allowed-extensions'] = set(['.tar.gz'])
+if not 'workdir-root-path' in config:
+    config['workdir-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../workdir")
 
+if not 'public-directory' in config:
+    config['public-directory'] = os.path.join(config['userdata-root-path'], "users")
+
+if not 'flist-work-directory' in config:
+    config['flist-work-directory'] = os.path.join(config['workdir-root-path'], "temp")
+
+if not 'docker-work-directory' in config:
+    config['docker-work-directory'] = os.path.join(config['workdir-root-path'], "temp")
+
+if not 'upload-directory' in config:
+    config['upload-directory'] = os.path.join(config['workdir-root-path'], "distfiles")
+
+if not 'allowed-extensions' in config:
+    config['allowed-extensions'] = set(['.tar.gz'])
+
+print("[+] user  directory : %s" % config['userdata-root-path'])
+print("[+] works directory : %s" % config['workdir-root-path'])
 print("[+] upload directory: %s" % config['upload-directory'])
 print("[+] flist creation  : %s" % config['flist-work-directory'])
+print("[+] docker creation : %s" % config['docker-work-directory'])
 print("[+] public directory: %s" % config['public-directory'])
 
 #
@@ -53,7 +67,7 @@ def allowed_file(filename, validate=False):
     return False
 
 def globalTemplate(filename, args):
-    args['debug'] = config['DEBUG']
+    args['debug'] = config['debug']
     return render_template(filename, **args)
 
 def file_from_flist(filename):
@@ -72,9 +86,9 @@ def uploadSuccess(flistname, filescount, home, username=None):
         'username': username,
         'accounts': request.environ['accounts'],
         'flistname': flistname,
-        'filescount': filescount,
-        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flistname),
-        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'filescount': 0,
+        'flisturl': "%s/%s/%s" % (config['public-website'], username, flistname),
+        'ardbhost': 'zdb://%s:%d' % (config['backend-public-host'], config['backend-public-port']),
     }
 
     return globalTemplate("success.html", settings)
@@ -110,6 +124,28 @@ def flist_merge_data(sources, target):
         data['error'] = "no source found"
         return data
 
+    # ensure .flist extension to each sources
+    fsources = []
+    for source in data['sources']:
+        # missing username/filename
+        if "/" not in source:
+            data['error'] = "malformed source filename"
+            return data
+
+        cleaned = source if source.endswith(".flist") else source + ".flist"
+        fsources.append(cleaned)
+
+    data['sources'] = fsources
+
+    # ensure each sources exists
+    for source in data['sources']:
+        temp = source.split("/")
+        item = HubPublicFlist(config, temp[0], temp[1])
+
+        if not item.file_exists:
+            data['error'] = "%s does not exists" % source
+            return data
+
     if not data['target']:
         data['error'] = "missing build (target) name"
         return data
@@ -139,7 +175,7 @@ def upload_file():
         response = api_flist_upload(request, username)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], response['home'])
+            return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload.html", response['message'])
@@ -157,7 +193,7 @@ def upload_file_flist():
         response = api_flist_upload(request, username, validate=True)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], response['home'])
+            return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload-flist.html", response['message'])
@@ -178,8 +214,8 @@ def flist_merge():
         if data['error']:
             return internalRedirect("merge.html", data['error'])
 
-        merger = HubMerger(config, username, data['target'])
-        status = merger.merge(data['sources'])
+        flist = HubPublicFlist(config, username, data['target'])
+        status = flist.merge(data['sources'])
 
         if not status == True:
             variables = {'error': status}
@@ -205,7 +241,7 @@ def docker_handler():
         response = docker.convert(request.form.get("docker-input"), username)
 
         if response['status'] == 'success':
-            return uploadSuccess(response['flist'], response['count'], "")
+            return uploadSuccess(response['flist'], 0, "")
 
         if response['status'] == 'error':
             return internalRedirect("docker.html", response['message'])
@@ -240,8 +276,8 @@ def show_flist_md(username, flist):
     variables = {
         'targetuser': username,
         'flistname': flist.filename,
-        'flisturl': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist.filename),
-        'ardbhost': 'ardb://%s:%d' % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'flisturl': "%s/%s/%s" % (config['public-website'], username, flist.filename),
+        'ardbhost': 'zdb://%s:%d' % (config['backend-public-host'], config['backend-public-port']),
         'checksum': flist.checksum
     }
 
@@ -255,8 +291,8 @@ def show_flist_txt(username, flist):
 
     text  = "File:     %s\n" % flist.filename
     text += "Uploader: %s\n" % username
-    text += "Source:   %s/%s/%s\n" % (config['PUBLIC_WEBADD'], username, flist.filename)
-    text += "Storage:  ardb://%s:%d\n" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT'])
+    text += "Source:   %s/%s/%s\n" % (config['public-website'], username, flist.filename)
+    text += "Storage:  zdb://%s:%d\n" % (config['backend-public-host'], config['backend-public-port'])
     text += "Checksum: %s\n" % flist.checksum
 
     response = make_response(text)
@@ -273,8 +309,8 @@ def show_flist_json(username, flist):
     data = {
         'flist': flist,
         'uploader': username,
-        'source': "%s/%s/%s" % (config['PUBLIC_WEBADD'], username, flist),
-        'storage': "ardb://%s:%d" % (config['PUBLIC_ARDB_HOST'], config['PUBLIC_ARDB_PORT']),
+        'source': "%s/%s/%s" % (config['public-website'], username, flist),
+        'storage': "zdb://%s:%d" % (config['backend-public-host'], config['backend-public-port']),
         'checksum': flist.checksum
     }
 
@@ -460,11 +496,11 @@ def api_my_upload():
 
     response = api_flist_upload(request, username)
     if response['status'] == 'success':
-        if config['DEBUG']:
-            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
+        if config['debug']:
+            return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
-            return api_response(extra={'name': response['flist'], 'files': response['count']})
+            return api_response(extra={'name': response['flist'], 'files': response['stats']})
 
     if response['status'] == 'error':
         return api_response(response['message'], 500)
@@ -478,11 +514,11 @@ def api_my_upload_flist():
 
     response = api_flist_upload(request, username, validate=True)
     if response['status'] == 'success':
-        if config['DEBUG']:
-            return api_response(extra={'name': response['flist'], 'files': response['count'], 'timing': {}})
+        if config['debug']:
+            return api_response(extra={'name': response['flist'], 'files': response['stats'], 'timing': {}})
 
         else:
-            return api_response(extra={'name': response['flist'], 'files': response['count']})
+            return api_response(extra={'name': response['flist'], 'files': response['stats']})
 
     if response['status'] == 'error':
         return api_response(response['message'], 500)
@@ -500,8 +536,8 @@ def api_my_merge(target):
     if data['error'] != None:
         return api_response(data['error'], 500)
 
-    merger = HubMerger(config, username, data['target'])
-    status = merger.merge(data['sources'])
+    flist = HubPublicFlist(config, username, data['target'])
+    status = flist.merge(data['sources'])
 
     if not status == True:
         return api_response(status, 500)
@@ -585,6 +621,10 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
+    # ensure target exists
+    if not destination.user_exists:
+        destination.user_create()
+
     # remove previous file if existing
     if os.path.exists(destination.target):
         os.unlink(destination.target)
@@ -592,7 +632,18 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
     print("[+] promote: %s -> %s" % (flist.target, destination.target))
     shutil.copy(flist.target, destination.target)
 
-    return api_response()
+    status = {
+        'source': {
+            'username': flist.username,
+            'filename': flist.filename,
+        },
+        'destination': {
+            'username': destination.username,
+            'filename': destination.filename,
+        }
+    }
+
+    return api_response(extra=status)
 
 
 def api_flist_upload(request, username, validate=False):
@@ -621,7 +672,26 @@ def api_flist_upload(request, username, validate=False):
 
     cleanfilename = file_from_flist(filename)
     flist = HubPublicFlist(config, username, cleanfilename)
+    flist.user_create()
 
+    # it's a new flist, let's do the normal flow
+    if not validate:
+        workspace = flist.raw.workspace()
+        flist.raw.unpack(source, workspace.name)
+        stats = flist.raw.create(workspace.name, flist.target)
+
+    # we have an existing flist and checking contents
+    # we don't need to create the flist, we just ensure the
+    # contents is on the backend
+    else:
+        flist.raw.loadsv2(source)
+        stats = flist.raw.validatev2()
+        if stats['failure'] > 0:
+            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
+
+        flist.commit()
+
+    """
     # validate if the flist exists
     if not validate:
         # extracting archive to workspace
@@ -642,11 +712,12 @@ def api_flist_upload(request, username, validate=False):
     flist.raw.commit()
     flist.user_create()
     flist.raw.pack(flist.target)
+    """
 
     # removing uploaded source file
     os.unlink(source)
 
-    return {'status': 'success', 'flist': flist.filename, 'home': username, 'count': 0, 'timing': {}}
+    return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
 
 def api_repositories():
     root = sorted(os.listdir(config['public-directory']))
@@ -659,14 +730,14 @@ def api_repositories():
         if not os.path.isdir(target):
             continue
 
-        official = (user in config['PUBLIC_OFFICIALS'])
+        official = (user in config['official-repositories'])
         output.append({'name': user, 'official': official})
 
     return output
 
 def api_contents(flist):
-    flist.raw.loads(flist.target)
-    contents = flist.raw.listing()
+    flist.raw.loadsv2(flist.target)
+    contents = flist.raw.listingv2()
 
     return contents
 
@@ -708,4 +779,4 @@ def api_response(error=None, code=200, extra=None):
 #
 ######################################
 print("[+] listening")
-app.run(host="0.0.0.0", port=5555, debug=config['DEBUG'], threaded=True)
+app.run(host="0.0.0.0", port=5555, debug=config['debug'], threaded=True)

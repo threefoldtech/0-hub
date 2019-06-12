@@ -4,15 +4,15 @@ This is the repository for the Zero-OS Hub website.
 It contains all the source code needed to make the public Zero-OS Hub website.
 
 ## Releases
-- [master](https://github.com/zero-os/0-hub/) - current running version
-- [1.0.0](https://github.com/zero-os/0-hub/tree/1.0.0) - initial release
+- [zflist](https://github.com/threefoldtech/0-hub/tree/zflist) - current running production version
+- [1.0.0](https://github.com/threefoldtech/0-hub/tree/1.0.0) - initial release
 
 # The Hub
 The Zero OS Hub allows you to do multiple things.
 
 ## Public centralization of flists
 The hub is mainly there to gives an easy way to distribute flist files.
-Flist are database of metadata you can use in any Zero-OS container.
+Flist are database of metadata you can use in any Zero-OS container/vm.
 
 ## Uploading your files
 In order to publish easily your files, you can upload a `.tar.gz` and the hub will convert it automatically to a flist
@@ -97,12 +97,18 @@ Simple example how to use all feature to do some flist promotion. In this case, 
 
 ```
 curl -b "active-user=userX; caddyoauth=[...jwt...]" \
-    "https://hub.gig.tech/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
+    "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
 ### Client
 There is a python client which can be found on the [client](client) directory.
 This make all of this more easy.
 
+# Backend
+Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db)
+
 # Documentation
 For full documentation, see the [`/docs`](/docs) directory.
+
+# Repository Owner
+- [Maxime Daniel](https://github.com/maxux), Telegram: [@maxux](http://t.me/maxux)

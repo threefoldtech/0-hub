@@ -1,14 +1,20 @@
 import os
+import subprocess
 import tempfile
-import g8storclient
 import hashlib
 import tarfile
 import redis
-from js9 import j
+import json
+import shutil
 
 class HubFlist:
     def __init__(self, config):
         self.config = config
+
+        if 'zflist-bin' not in config:
+            config['zflist-bin'] = "/opt/0-flist/zflist/zflist"
+
+        self.zflist = config['zflist-bin']
 
         """
         self.backopt = {
@@ -20,8 +26,9 @@ class HubFlist:
         """
 
         self.backopt = {
-            'host': config['PRIVATE_ARDB_HOST'],
-            'port': config['PRIVATE_ARDB_PORT'],
+            'host': config['backend-internal-host'],
+            'port': config['backend-internal-port'],
+            'nspass': config['backend-internal-pass'],
             'password': None,
             'ssl': False
         }
@@ -65,14 +72,19 @@ class HubFlist:
 
         self.ensure(target)
 
-        print(filepath)
+        print("[+] upacking: %s" % filepath)
+        """
         t = tarfile.open(filepath, "r:*")
         t.extractall(path=target)
 
         filescount = len(t.getnames())
         t.close()
+        """
+        args = ["tar", "-xpf", filepath, "-C", target]
+        p = subprocess.Popen(args)
+        p.wait()
 
-        return filescount
+        return 0
 
     def initialize(self, rootpath, prefix="flist-"):
         self.tmpdir = self.workspace("flist-")
@@ -169,6 +181,9 @@ class HubFlist:
 
         return True
 
+    def loadsv2(self, source):
+        self.sourcev2 = source
+
     def validate(self):
         """
         This validate (confirm) all contents from the flist are available on the
@@ -236,6 +251,44 @@ class HubFlist:
 
         return contents
 
+    def listingv2(self):
+        args = [self.zflist, "--list", "--action", "json", "--archive", self.sourcev2]
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        return json.loads(output.decode('utf-8'))
+
+    def validatev2(self):
+        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
+        args = [self.zflist, "--list", "--action", "check", "--archive", self.sourcev2, "--backend", backend, "--json"]
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        return json.loads(output.decode('utf-8'))
+
+    def create(self, rootdir, target):
+        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
+        args = [self.zflist, "--create", rootdir, "--archive", target, "--backend", backend, '--json']
+
+        if self.config['backend-internal-pass']:
+            args.append('--password')
+            args.append(self.config['backend-internal-pass'])
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        # p = subprocess.Popen(args)
+        # p.wait()
+
+        print(output)
+        print(err)
+
+        return json.loads(output.decode('utf-8'))
+        # return True
+
     def checksum(self, target):
         """
         Compute md5 hash of the flist
@@ -253,6 +306,22 @@ class HubFlist:
 
         return hash_md5.hexdigest()
 
+    def merge(self, target, sources):
+        fixedsources = []
+        for source in sources:
+            fixedsources.append("--merge")
+            fixedsources.append(os.path.join(self.config['public-directory'], source))
+
+        args = [self.zflist, "--archive", target, "--json"] + fixedsources
+        print(args)
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        # return json.loads(output.decode('utf-8'))
+        return True
+
 class HubPublicFlist:
     def __init__(self, config, username, flistname):
         self.rootpath = config['public-directory']
@@ -264,6 +333,11 @@ class HubPublicFlist:
             self.filename += ".flist"
 
         self.raw = HubFlist(config)
+
+    def commit(self):
+        if self.raw.sourcev2 != self.target:
+            self.user_create()
+            shutil.copyfile(self.raw.sourcev2, self.target)
 
     @property
     def target(self):
@@ -283,11 +357,12 @@ class HubPublicFlist:
 
     @property
     def file_exists(self):
-        print(self.target)
+        print("[+] flist exists: %s" % self.target)
         return (os.path.isfile(self.target) or os.path.islink(self.target))
 
     @property
     def checksum(self):
         return self.raw.checksum(self.target)
 
-
+    def merge(self, sources):
+        return self.raw.merge(self.target, sources)
