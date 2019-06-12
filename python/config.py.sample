@@ -14,6 +14,9 @@ config = {
     'ignored-files': ['.', '..', '.keep'],
     'official-repositories': ['official-apps', 'dockers'],
 
+    # 'userdata-root-path': '/opt/0-hub/public',
+    # 'workdir-root-path': '/opt/0-hub/workdir',
+
     # enable debug or production mode
     'debug': True,
 }
