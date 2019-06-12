@@ -4,8 +4,7 @@ This is the repository for the Zero-OS Hub website.
 It contains all the source code needed to make the public Zero-OS Hub website.
 
 ## Releases
-- [zflist](https://github.com/threefoldtech/0-hub/tree/zflist) - current running production version
-- [1.0.0](https://github.com/threefoldtech/0-hub/tree/1.0.0) - initial release
+- [master](https://github.com/threefoldtech/0-hub/tree/master) - current running production version
 
 # The Hub
 The Zero OS Hub allows you to do multiple things.
