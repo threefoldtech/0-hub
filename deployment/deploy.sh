@@ -10,6 +10,7 @@ makeopts="-j 5"
 clean() {
     rm -rf /opt/0-flist
     rm -rf /opt/c-capnproto
+    rm -rf /opt/curl
     rm -rf $1
 }
 
@@ -19,7 +20,27 @@ dependencies() {
     apt-get install -y build-essential git libsnappy-dev libz-dev \
         libtar-dev libb2-dev autoconf libtool libjansson-dev \
         libhiredis-dev libsqlite3-dev tmux vim \
-        python3-flask python3-redis python3-docker python3-pytoml
+        python3-flask python3-redis python3-docker python3-pytoml \
+        libssl-dev
+}
+
+libcurl() {
+    git clone --depth=1 -b curl-7_62_0 https://github.com/curl/curl
+    pushd curl
+    autoreconf -f -i -s
+
+    ./configure --disable-debug --enable-optimize --disable-curldebug --disable-symbol-hiding --disable-rt \
+        --disable-ftp --disable-ldap --disable-ldaps --disable-rtsp --disable-proxy --disable-dict \
+        --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-smb --disable-smtp --disable-gopher \
+        --disable-manual --disable-libcurl-option --disable-sspi --disable-ntlm-wb --without-brotli --without-librtmp --without-winidn \
+        --disable-threaded-resolver \
+        --with-openssl
+
+    make ${makeopts}
+    make install
+    ldconfig
+
+    popd
 }
 
 capnp() {
@@ -73,6 +94,7 @@ pushd /opt
 clean $1
 dependencies
 capnp
+libcurl
 zeroflist
 hub $1
 
