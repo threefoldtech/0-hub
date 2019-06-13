@@ -720,8 +720,14 @@ def api_flist_upload(request, username, validate=False):
     return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
 
 def api_repositories():
-    root = sorted(os.listdir(config['public-directory']))
     output = []
+
+    try:
+        root = sorted(os.listdir(config['public-directory']))
+
+    except FileNotFoundError as e:
+        print(e)
+        root = []
 
     for user in root:
         target = os.path.join(config['public-directory'], user)
