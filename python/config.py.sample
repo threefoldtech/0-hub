@@ -16,6 +16,10 @@ config = {
 
     # 'userdata-root-path': '/opt/0-hub/public',
     # 'workdir-root-path': '/opt/0-hub/workdir',
+ 
+    'iyo_clientid': '',
+    'iyo_secret': '',
+    'iyo_callback': 'http://127.0.0.1:5555/_iyo_callback',
 
     # enable debug or production mode
     'debug': True,
