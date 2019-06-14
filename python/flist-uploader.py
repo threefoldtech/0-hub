@@ -49,7 +49,7 @@ print("[+] public directory: %s" % config['public-directory'])
 #
 app = Flask(__name__)
 # app.wsgi_app = hub.itsyouonline.ItsYouChecker(app.wsgi_app)
-# app.wsgi_app = ProxyFix(app.wsgi_app)
+app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 app.secret_key = os.urandom(24)
 
