@@ -37,6 +37,9 @@ if not 'upload-directory' in config:
 if not 'allowed-extensions' in config:
     config['allowed-extensions'] = set(['.tar.gz'])
 
+if not 'authentication' in config:
+    config['authentication'] = True
+
 print("[+] user  directory : %s" % config['userdata-root-path'])
 print("[+] works directory : %s" % config['workdir-root-path'])
 print("[+] upload directory: %s" % config['upload-directory'])
@@ -53,10 +56,28 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 app.secret_key = os.urandom(24)
 
-hub.itsyouonline.configure(app,
-    config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
-    '/_iyo_callback', None, True, True, 'organization'
-)
+if config['authentication']:
+    hub.itsyouonline.configure(app,
+        config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
+        '/_iyo_callback', None, True, True, 'organization'
+    )
+
+else:
+    hub.itsyouonline.disabled(app)
+    config['official-repositories'] = ['Administrator']
+
+    print("[-] -- WARNING -------------------------------------")
+    print("[-]                                                 ")
+    print("[-]             AUTHENTICATION DISABLED             ")
+    print("[-]       FULL CONTROL IS ALLOWED FOR ANYBODY       ")
+    print("[-]                                                 ")
+    print("[-] This mode should be _exclusively_ used in local ")
+    print("[-] development  or  private environment,  never in ")
+    print("[-] public  production  environment,  except if you ")
+    print("[-] know what you're doing                          ")
+    print("[-]                                                 ")
+    print("[-] -- WARNING -------------------------------------")
+
 
 ######################################
 #

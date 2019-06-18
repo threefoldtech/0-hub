@@ -31,6 +31,9 @@ def _invalidate_session():
         force_invalidate_session()
 
 
+def disabled(app):
+    app.config['authentication'] = False
+
 def configure(app, organization, client_secret, callback_uri, callback_route, scope=None, get_jwt=False, offline_access=False, orgfromrequest=False):
     """
     @param app: Flask app object
@@ -45,6 +48,7 @@ def configure(app, organization, client_secret, callback_uri, callback_route, sc
     @param get_jwt: Set to True to also create a jwt for the authenticated user
     """
     app.before_request(_invalidate_session)
+    app.config['authentication'] = True
     app.config['iyo_config'] = dict(
         organization=organization,
         client_secret=client_secret,
@@ -93,6 +97,11 @@ def requires_auth():
         """
         @wraps(handler)
         def _wrapper(*args, **kwargs):
+            if not current_app.config['authentication']:
+                session['accounts'] = ['Administrator']
+                session['username'] = 'Administrator'
+                return handler(*args, **kwargs)
+
             if session.get("_iyo_authenticated"):
                 if request.cookies.get("active-user") in session['accounts']:
                     print("[+] using special user: %s" % request.cookies.get('active-user'))
