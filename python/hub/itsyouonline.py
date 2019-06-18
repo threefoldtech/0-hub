@@ -19,7 +19,7 @@ MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
 
 
 def force_invalidate_session():
-    items = ['_iyo_authenticated', 'iyo_user_info', 'iyo_jwt', 'accounts', 'username']
+    items = ['_iyo_authenticated', 'iyo_jwt', 'accounts', 'username']
     for item in items:
         if item in session:
             del session[item]
@@ -31,12 +31,14 @@ def _invalidate_session():
         force_invalidate_session()
 
 
-def configure(app, organization, client_secret, callback_uri, callback_route, scope=None, get_jwt=False, offline_access=False, orgfromrequest=False):
+def disabled(app):
+    app.config['authentication'] = False
+
+def configure(app, client_id, client_secret, callback_uri, callback_route, scope=None, get_jwt=False, offline_access=False, orgfromrequest=False):
     """
     @param app: Flask app object
-    @param organization: Fully qualified Itsyou.Online organization.
-                         E.g. root_org.sub_org.sub_sub_org
-    @param client_secret: Itsyou.Online organization api key client_secret
+    @param client_id: Itsyou.Online api client id
+    @param client_secret: Itsyou.Online api key client_secret
     @param callback_uri: Uri Itsyou.Online will target in the oauth flow.
                          Must be the same as the one configured in the Itsyou.Online
                          api key of the corresponding client_secret parameter.
@@ -46,7 +48,7 @@ def configure(app, organization, client_secret, callback_uri, callback_route, sc
     """
     app.before_request(_invalidate_session)
     app.config['iyo_config'] = dict(
-        organization=organization,
+        client_id=client_id,
         client_secret=client_secret,
         callback_uri=callback_uri,
         callback_route=callback_route,
@@ -67,7 +69,7 @@ def get_auth_org(org_from_request=False):
     if org_from_request is True:
         return request.values[config['orgfromrequest']]
 
-    return config['organization']
+    return config['client_id']
 
 def _extract_accounts(username, scopestr):
     accounts = [username]
@@ -100,11 +102,8 @@ def requires_auth():
 
                 return handler(*args, **kwargs)
 
-            organization = get_auth_org()
             config = current_app.config["iyo_config"]
             scopes = []
-
-            scopes.append("user:memberof:{}".format(organization))
 
             if config["scope"]:
                 scopes.append(config['scope'])
@@ -122,7 +121,6 @@ def requires_auth():
                     if set(scope.split(",")).issubset(set(jwt_scope)):
                         username = jwt_info["username"]
 
-                        session["iyo_user_info"] = _get_info(username, jwt=jwt_string)
                         session["_iyo_authenticated"] = time.time()
                         session["iyo_jwt"] = jwt_string
                         session['username'] = username
@@ -134,12 +132,11 @@ def requires_auth():
 
             state = str(uuid.uuid4())
             session["_iyo_state"] = state
-            session['_iyo_organization'] = organization
             session["_iyo_auth_complete_uri"] = request.full_path
 
             params = {
                 "response_type": "code",
-                "client_id": config["organization"],
+                "client_id": config["client_id"],
                 "redirect_uri": config["callback_uri"],
                 "scope": scope,
                 "state": state
@@ -170,14 +167,11 @@ def _callback():
 
     # Get access token
     config = current_app.config["iyo_config"]
-    organization = config["organization"]
-    authorg = session['_iyo_organization']
 
     params = {
         "code": code,
         "state": state,
-        "grant_type": "authorization_code",
-        "client_id": organization,
+        "client_id": config["client_id"],
         "client_secret": config["client_secret"],
         "redirect_uri": config["callback_uri"],
     }
@@ -200,34 +194,28 @@ def _callback():
     username = response["info"]["username"]
 
     # Get user info
-    session['iyo_user_info'] = _get_info(username, access_token=access_token)
     session['_iyo_authenticated'] = time.time()
     session['accounts'] = _extract_accounts(username, response['scope'])
     session['username'] = username
 
     if config['get_jwt']:
-        # Create JWT
-        scope = "user:memberof:{}".format(authorg)
-        if config['offline_access']:
-            scope += ",offline_access"
+        params = dict()
+        scopestr = ""
 
-        params = dict(scope=scope)
+        if config["scope"]:
+            scopestr += "user:memberof:{}".format(config['scope'])
+
+            if config['offline_access']:
+                scopestr += ",offline_access"
+
+        params = dict(scope=scopestr)
         jwturl = "https://itsyou.online/v1/oauth/jwt?%s" % urlencode(params)
         headers = {"Authorization": "token %s" % access_token}
+
         response = requests.get(jwturl, headers=headers)
         response.raise_for_status()
         session['iyo_jwt'] = response.text
 
     return redirect(on_complete_uri)
 
-
-def _get_info(username, access_token=None, jwt=None):
-    if access_token:
-        headers = {"Authorization": "token %s" % access_token}
-    else:
-        headers = {"Authorization": "Bearer %s" % jwt}
-    userinfourl = "https://itsyou.online/api/users/%s/info" % username
-    response = requests.get(userinfourl, headers=headers)
-    response.raise_for_status()
-    return response.json()
 
