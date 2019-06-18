@@ -47,6 +47,7 @@ def configure(app, client_id, client_secret, callback_uri, callback_route, scope
     @param get_jwt: Set to True to also create a jwt for the authenticated user
     """
     app.before_request(_invalidate_session)
+    app.config['authentication'] = True
     app.config['iyo_config'] = dict(
         client_id=client_id,
         client_secret=client_secret,
@@ -95,6 +96,11 @@ def requires_auth():
         """
         @wraps(handler)
         def _wrapper(*args, **kwargs):
+            if not current_app.config['authentication']:
+                session['accounts'] = ['Administrator']
+                session['username'] = 'Administrator'
+                return handler(*args, **kwargs)
+
             if session.get("_iyo_authenticated"):
                 if request.cookies.get("active-user") in session['accounts']:
                     print("[+] using special user: %s" % request.cookies.get('active-user'))
