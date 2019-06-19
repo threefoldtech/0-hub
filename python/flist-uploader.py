@@ -399,6 +399,15 @@ def api_list():
 
     return response
 
+@app.route('/api/fileslist')
+def api_list_files():
+    fileslist = api_fileslist()
+
+    response = make_response(json.dumps(fileslist) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
 @app.route('/api/repositories')
 def api_list_repositories():
     repositories = api_repositories()
@@ -414,31 +423,7 @@ def api_user_contents(username):
     if not flist.user_exists:
         abort(404)
 
-    files = sorted(os.listdir(flist.user_path))
-    contents = []
-
-    for file in files:
-        filepath = os.path.join(config['public-directory'], username, file)
-        stat = os.lstat(filepath)
-
-        if S_ISLNK(stat.st_mode):
-            target = os.readlink(filepath)
-
-            contents.append({
-                'name': file,
-                'size': "--",
-                'updated': int(stat.st_mtime),
-                'type': 'symlink',
-                'target': target,
-            })
-
-        else:
-            contents.append({
-                'name': file,
-                'size': "%.2f KB" % ((stat.st_size) / 1024),
-                'updated': int(stat.st_mtime),
-                'type': 'regular',
-            })
+    contents = api_user_contents(username, flist.user_path)
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -763,6 +748,48 @@ def api_repositories():
         output.append({'name': user, 'official': official})
 
     return output
+
+def api_user_contents(username, userpath):
+    files = sorted(os.listdir(userpath))
+    contents = []
+
+    for file in files:
+        filepath = os.path.join(config['public-directory'], username, file)
+        stat = os.lstat(filepath)
+
+        if S_ISLNK(stat.st_mode):
+            target = os.readlink(filepath)
+
+            contents.append({
+                'name': file,
+                'size': "--",
+                'updated': int(stat.st_mtime),
+                'type': 'symlink',
+                'target': target,
+            })
+
+        else:
+            contents.append({
+                'name': file,
+                'size': "%.2f KB" % ((stat.st_size) / 1024),
+                'updated': int(stat.st_mtime),
+                'type': 'regular',
+            })
+
+    return contents
+
+def api_fileslist():
+    repositories = api_repositories()
+    fileslist = {}
+
+    for repository in repositories:
+        flist = HubPublicFlist(config, repository['name'], "unknown")
+        contents = api_user_contents(flist.username, flist.user_path)
+
+        fileslist[repository['name']] = contents
+
+    return fileslist
+
 
 def api_contents(flist):
     flist.raw.loadsv2(flist.target)
