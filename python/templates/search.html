@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+{% block title %}Zero-OS Hub - Search{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Search for an flist</h1>
+        <p>You are looking for a specific flist ? Use our search engine to find it.</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="search-form">
+        <h2>What are you looking for ?</h2>
+        <input name="search" id="search" value="" placeholder="User, build, commit, version, ... (at least 3 characters)">
+    </div>
+
+    <table class="table table-hover" id="entries">
+        <thead>
+            <tr>
+                <th>Repository</th>
+                <th>Name</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        <tr>
+            <td>Loading files...</td>
+            <td></td>
+            <td></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="loading">
+        <small>We are loading files list, please wait...</small>
+    </div>
+
+<script>
+$(document).ready(function() {
+    $("#search").focus();
+
+    $.get("/api/fileslist", function(data) {
+        fileslist(data);
+    });
+
+    $("#search").on("keyup", function() {
+        if($(this).val().length < 3) {
+            $("#entries").hide();
+            return;
+        }
+
+        var value = $(this).val().toLowerCase();
+
+        $("#entries tbody tr").filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
+
+        $("#entries").show();
+    });
+});
+</script>
+
+</div>
+{% endblock %}

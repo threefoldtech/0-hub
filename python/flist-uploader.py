@@ -369,6 +369,11 @@ def checksum_flist(username, flist):
 
     return response
 
+@app.route('/search')
+def search_flist():
+    return globalTemplate("search.html", {})
+
+
 ######################################
 #
 # ROUTING API
