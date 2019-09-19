@@ -409,7 +409,7 @@ def api_user_contents(username):
 
     return response
 
-@app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO'])
+@app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO', 'HEAD'])
 def api_inspect(username, flist):
     flist = HubPublicFlist(config, username, flist)
 
@@ -422,7 +422,7 @@ def api_inspect(username, flist):
     if request.method == 'GET':
         contents = api_contents(flist)
 
-    if request.method == 'INFO':
+    if request.method == 'INFO' or request.method == 'HEAD':
         contents = api_flist_info(flist)
 
     response = make_response(json.dumps(contents) + "\n")
