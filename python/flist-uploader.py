@@ -754,7 +754,7 @@ def api_flist_info(flist):
     }
 
     if S_ISLNK(stat.st_mode):
-        target = os.readlink(filepath)
+        target = os.readlink(flist.target)
 
         contents['type'] = 'symlink'
         contents['target'] = target
