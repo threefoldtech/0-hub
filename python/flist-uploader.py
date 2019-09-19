@@ -409,7 +409,7 @@ def api_user_contents(username):
 
     return response
 
-@app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO', 'HEAD'])
+@app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO'])
 def api_inspect(username, flist):
     flist = HubPublicFlist(config, username, flist)
 
@@ -422,13 +422,31 @@ def api_inspect(username, flist):
     if request.method == 'GET':
         contents = api_contents(flist)
 
-    if request.method == 'INFO' or request.method == 'HEAD':
+    if request.method == 'INFO':
         contents = api_flist_info(flist)
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
 
     return response
+
+@app.route('/api/flist/<username>/<flist>/light', methods=['GET'])
+def api_inspect_light(username, flist):
+    flist = HubPublicFlist(config, username, flist)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    contents = api_flist_info(flist)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
 
 @app.route('/api/flist/me', methods=['GET'])
 def api_my_myself():
