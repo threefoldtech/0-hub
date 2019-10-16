@@ -456,9 +456,24 @@ def api_inspect(username, flist):
 
     return response
 
-#
-# Protected API
-#
+@app.route('/api/flist/<username>/<flist>/light', methods=['GET'])
+def api_inspect_light(username, flist):
+    flist = HubPublicFlist(config, username, flist)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    contents = api_flist_info(flist)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+
 @app.route('/api/flist/me', methods=['GET'])
 @hub.itsyouonline.requires_auth()
 def api_my_myself():
@@ -815,6 +830,8 @@ def api_flist_info(flist):
     }
 
     if S_ISLNK(stat.st_mode):
+        target = os.readlink(flist.target)
+
         contents['type'] = 'symlink'
         contents['target'] = target
         contents['size'] = 0
