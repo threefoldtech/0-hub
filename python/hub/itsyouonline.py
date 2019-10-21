@@ -116,6 +116,11 @@ def requires_auth():
             scope = ','.join(scopes)
 
             header = request.headers.get("Authorization")
+
+            # fallback to old behavior
+            if not header:
+                header = request.cookies.get("caddyoauth")
+
             if header:
                 match = JWT_AUTH_HEADER.match(header)
                 if match:
