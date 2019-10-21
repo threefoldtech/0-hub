@@ -21,7 +21,9 @@ dependencies() {
         libtar-dev libb2-dev autoconf libtool libjansson-dev \
         libhiredis-dev libsqlite3-dev tmux vim \
         python3-flask python3-redis python3-docker python3-pytoml \
-        libssl-dev python3-jwt
+        libssl-dev python3-pip
+
+    pip3 install python-jose
 }
 
 libcurl() {
