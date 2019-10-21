@@ -134,7 +134,7 @@ def requires_auth():
                     jwt_scope = jwt_info["scope"]
                     username = jwt_info["username"]
 
-                except e:
+                except:
                     return "Could not authorize this request", 403
 
                 session["_iyo_authenticated"] = time.time()
