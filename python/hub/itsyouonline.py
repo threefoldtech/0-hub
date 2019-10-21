@@ -72,9 +72,8 @@ def get_auth_org(org_from_request=False):
 
     return config['client_id']
 
-def _extract_accounts(username, scopestr):
+def _extract_accounts(username, scopes):
     accounts = [username]
-    scopes = scopestr.split(",")
 
     for account in scopes:
         if not account:
