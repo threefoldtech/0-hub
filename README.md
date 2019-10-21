@@ -4,7 +4,8 @@ This is the repository for the Zero-OS Hub website.
 It contains all the source code needed to make the public Zero-OS Hub website.
 
 ## Releases
-- [master](https://github.com/threefoldtech/0-hub/tree/master) - current running production version
+- [master](https://github.com/threefoldtech/0-hub/tree/master) - stable production version
+- [playground](https://github.com/threefoldtech/0-hub/tree/playground) - development playground version
 
 # The Hub
 The Zero OS Hub allows you to do multiple things.
@@ -43,7 +44,7 @@ a flist can be done anonymously.
 ## Getting information through API
 The hub host a basic REST API which can gives you some informations about flists, renaming them, remove them, etc.
 
-To use authenticated endpoints, you need to provide a itsyou.online valid `jwt` via cookie `caddyoauth`.
+To use authenticated endpoints, you need to provide a itsyou.online valid `jwt` via `Authorization: bearer <jwt>` header.
 This `jwt` can contains special `memberof` to allows you cross-repository actions.
 
 If your `jwt` contains memberof, you can choose which user you want to use by specifying cookie `active-user`.
@@ -54,6 +55,8 @@ See example below.
   - Returns a json array with all repository/flists found
 - `/api/repositories` (**GET**)
   - Returns a json array with all repositories found
+- `/api/fileslist` (**GET**)
+  - Returns a json array with all repositories and files found
 - `/api/flist/<repository>` (**GET**)
   - Returns a json array of each flist found inside specified repository.
   - Each entry contains `filename`, `size`, `updated` date and `type` (regular or symlink), optionally `target` if it's a symbolic link.
@@ -95,7 +98,7 @@ Simple example how to use all feature to do some flist promotion. In this case, 
 - This user want to promote `user2/my-app-0.1.0` flist to `userX/official-app-0.1.0`
 
 ```
-curl -b "active-user=userX; caddyoauth=[...jwt...]" \
+curl -b "active-user=userX;" -H "Authorization: bearer ...jwt..." \
     "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
