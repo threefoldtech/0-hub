@@ -1,7 +1,7 @@
 import os
 import shutil
 import json
-import jwt
+from jose import jwt
 import hub.itsyouonline
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session

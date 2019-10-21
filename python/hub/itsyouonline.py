@@ -1,7 +1,7 @@
 import re
 import time
 import uuid
-import jwt
+from jose import jwt
 import requests
 from flask import current_app, redirect, request, session, flash
 from functools import wraps
