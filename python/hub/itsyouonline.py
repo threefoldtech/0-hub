@@ -114,36 +114,40 @@ def requires_auth():
                 scopes.append(config['scope'])
 
             scope = ','.join(scopes)
+            jwt_string = None
 
+            # first check for Authorizaton method
             header = request.headers.get("Authorization")
-
-            # fallback to old behavior
-            if not header:
-                header = request.cookies.get("caddyoauth")
-
             if header:
                 match = JWT_AUTH_HEADER.match(header)
                 if match:
                     jwt_string = match.group(1)
+
+            # then, fallback to old caddy behavior
+            if not jwt_string:
+                jwt_string = request.cookies.get("caddyoauth")
+
+            # checking jwt provided (if any set)
+            if jwt_string:
+                try:
                     jwt_info = jwt.decode(jwt_string, ITSYOUONLINE_KEY)
                     jwt_scope = jwt_info["scope"]
-
-                    # if set(scope.split(",")).issubset(set(jwt_scope)):
                     username = jwt_info["username"]
 
-                    session["_iyo_authenticated"] = time.time()
-                    session["iyo_jwt"] = jwt_string
-                    session['username'] = username
-                    session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
+                except e:
+                    return "Could not authorize this request", 403
 
-                    # check again for user-switch flag
-                    if request.cookies.get("active-user") in session['accounts']:
-                        print("[+] using special user: %s" % request.cookies.get('active-user'))
-                        session['username'] = request.cookies.get('active-user')
+                session["_iyo_authenticated"] = time.time()
+                session["iyo_jwt"] = jwt_string
+                session['username'] = username
+                session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
 
-                    return handler(*args, **kwargs)
+                # check again for user-switch flag
+                if request.cookies.get("active-user") in session['accounts']:
+                    print("[+] using special user: %s" % request.cookies.get('active-user'))
+                    session['username'] = request.cookies.get('active-user')
 
-                return "Could not authorize this request!", 403
+                return handler(*args, **kwargs)
 
             state = str(uuid.uuid4())
             session["_iyo_state"] = state
