@@ -131,6 +131,11 @@ def requires_auth():
                     session['username'] = username
                     session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
 
+                    # check again for user-switch flag
+                    if request.cookies.get("active-user") in session['accounts']:
+                        print("[+] using special user: %s" % request.cookies.get('active-user'))
+                        session['username'] = request.cookies.get('active-user')
+
                     return handler(*args, **kwargs)
 
                 return "Could not authorize this request!", 403
