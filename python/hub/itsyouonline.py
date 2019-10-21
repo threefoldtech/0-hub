@@ -124,15 +124,15 @@ def requires_auth():
                     jwt_info = jwt.decode(jwt_string, ITSYOUONLINE_KEY)
                     jwt_scope = jwt_info["scope"]
 
-                    if set(scope.split(",")).issubset(set(jwt_scope)):
-                        username = jwt_info["username"]
+                    # if set(scope.split(",")).issubset(set(jwt_scope)):
+                    username = jwt_info["username"]
 
-                        session["_iyo_authenticated"] = time.time()
-                        session["iyo_jwt"] = jwt_string
-                        session['username'] = username
-                        session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
+                    session["_iyo_authenticated"] = time.time()
+                    session["iyo_jwt"] = jwt_string
+                    session['username'] = username
+                    session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
 
-                        return handler(*args, **kwargs)
+                    return handler(*args, **kwargs)
 
                 return "Could not authorize this request!", 403
 
