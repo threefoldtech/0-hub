@@ -50,3 +50,29 @@ function uswitch(username) {
     $(".current-user").html(username);
     $("a.current-user").attr('href', '/' + username);
 }
+
+function fileslist(source) {
+    $("#entries tbody").empty();
+    $(".loading").hide();
+
+    for(var index in source) {
+        var repository = source[index];
+
+        for(var entry in repository) {
+            var item = repository[entry];
+
+            var username = $('<td>').append($('<a>', {'href': index}).html(index));
+
+            var filepath = index + "/" + item['name'] + '.md';
+            var filename = $('<td>').append($('<a>', {'href': filepath}).html(item['name']));
+            var size = $('<td>').html(item['size']);
+
+            var tr = $('<tr>')
+                .append(username)
+                .append(filename)
+                .append(size);
+
+            $('#entries tbody').append(tr);
+        }
+    }
+}

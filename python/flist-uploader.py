@@ -1,14 +1,15 @@
 import os
 import shutil
 import json
+from jose import jwt
+import hub.itsyouonline
 from stat import *
-from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory
+from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
 from hub.flist import HubFlist, HubPublicFlist
-from hub.itsyouonline import ItsYouChecker
 from hub.docker import HubDocker
 
 #
@@ -36,6 +37,9 @@ if not 'upload-directory' in config:
 if not 'allowed-extensions' in config:
     config['allowed-extensions'] = set(['.tar.gz'])
 
+if not 'authentication' in config:
+    config['authentication'] = True
+
 print("[+] user  directory : %s" % config['userdata-root-path'])
 print("[+] works directory : %s" % config['workdir-root-path'])
 print("[+] upload directory: %s" % config['upload-directory'])
@@ -47,9 +51,33 @@ print("[+] public directory: %s" % config['public-directory'])
 # initialize flask application
 #
 app = Flask(__name__)
-app.wsgi_app = ItsYouChecker(app.wsgi_app)
+# app.wsgi_app = hub.itsyouonline.ItsYouChecker(app.wsgi_app)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
+app.secret_key = os.urandom(24)
+
+if config['authentication']:
+    hub.itsyouonline.configure(app,
+        config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
+        '/_iyo_callback', None, True, True, 'organization'
+    )
+
+else:
+    hub.itsyouonline.disabled(app)
+    config['official-repositories'] = ['Administrator']
+
+    print("[-] -- WARNING -------------------------------------")
+    print("[-]                                                 ")
+    print("[-]             AUTHENTICATION DISABLED             ")
+    print("[-]       FULL CONTROL IS ALLOWED FOR ANYBODY       ")
+    print("[-]                                                 ")
+    print("[-] This mode should be _exclusively_ used in local ")
+    print("[-] development  or  private environment,  never in ")
+    print("[-] public  production  environment,  except if you ")
+    print("[-] know what you're doing                          ")
+    print("[-]                                                 ")
+    print("[-] -- WARNING -------------------------------------")
+
 
 ######################################
 #
@@ -68,6 +96,13 @@ def allowed_file(filename, validate=False):
 
 def globalTemplate(filename, args):
     args['debug'] = config['debug']
+
+    if 'username' in session:
+        args['username'] = session['username']
+
+    if 'accounts' in session:
+        args['accounts'] = session['accounts']
+
     return render_template(filename, **args)
 
 def file_from_flist(filename):
@@ -80,11 +115,11 @@ def file_from_flist(filename):
 
 def uploadSuccess(flistname, filescount, home, username=None):
     if username is None:
-        username = request.environ['username']
+        username = session['username']
 
     settings = {
         'username': username,
-        'accounts': request.environ['accounts'],
+        'accounts': session['accounts'],
         'flistname': flistname,
         'filescount': 0,
         'flisturl': "%s/%s/%s" % (config['public-website'], username, flistname),
@@ -95,8 +130,8 @@ def uploadSuccess(flistname, filescount, home, username=None):
 
 def internalRedirect(target, error=None):
     settings = {
-        'username': request.environ['username'],
-        'accounts': request.environ['accounts'],
+        'username': None,
+        'accounts': [],
     }
 
     if error:
@@ -164,12 +199,15 @@ def flist_merge_data(sources, target):
 # ROUTING ACTIONS
 #
 ######################################
-@app.route('/upload', methods=['GET', 'POST'])
-def upload_file():
-    if not request.environ['username']:
-        return "Access denied."
+@app.route('/logout')
+def logout():
+    hub.itsyouonline.force_invalidate_session()
+    return internalRedirect("users.html")
 
-    username = request.environ['username']
+@app.route('/upload', methods=['GET', 'POST'])
+@hub.itsyouonline.requires_auth()
+def upload_file():
+    username = session['username']
 
     if request.method == 'POST':
         response = api_flist_upload(request, username)
@@ -183,11 +221,9 @@ def upload_file():
     return internalRedirect("upload.html")
 
 @app.route('/upload-flist', methods=['GET', 'POST'])
+@hub.itsyouonline.requires_auth()
 def upload_file_flist():
-    if not request.environ['username']:
-        return "Access denied."
-
-    username = request.environ['username']
+    username = session['username']
 
     if request.method == 'POST':
         response = api_flist_upload(request, username, validate=True)
@@ -201,11 +237,9 @@ def upload_file_flist():
     return internalRedirect("upload-flist.html")
 
 @app.route('/merge', methods=['GET', 'POST'])
+@hub.itsyouonline.requires_auth()
 def flist_merge():
-    if not request.environ['username']:
-        return "Access denied."
-
-    username = request.environ['username']
+    username = session['username']
 
     if request.method == 'POST':
         data = flist_merge_post()
@@ -227,11 +261,9 @@ def flist_merge():
     return internalRedirect("merge.html")
 
 @app.route('/docker-convert', methods=['GET', 'POST'])
+@hub.itsyouonline.requires_auth()
 def docker_handler():
-    if not request.environ['username']:
-        return "Access denied."
-
-    username = request.environ['username']
+    username = session['username']
 
     if request.method == 'POST':
         if not request.form.get("docker-input"):
@@ -337,11 +369,20 @@ def checksum_flist(username, flist):
 
     return response
 
+@app.route('/search')
+def search_flist():
+    return globalTemplate("search.html", {})
+
+
 ######################################
 #
 # ROUTING API
 #
 ######################################
+
+#
+# Public API
+#
 @app.route('/api/flist')
 def api_list():
     repositories = api_repositories()
@@ -363,6 +404,15 @@ def api_list():
 
     return response
 
+@app.route('/api/fileslist')
+def api_list_files():
+    fileslist = api_fileslist()
+
+    response = make_response(json.dumps(fileslist) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
 @app.route('/api/repositories')
 def api_list_repositories():
     repositories = api_repositories()
@@ -378,31 +428,7 @@ def api_user_contents(username):
     if not flist.user_exists:
         abort(404)
 
-    files = sorted(os.listdir(flist.user_path))
-    contents = []
-
-    for file in files:
-        filepath = os.path.join(config['public-directory'], username, file)
-        stat = os.lstat(filepath)
-
-        if S_ISLNK(stat.st_mode):
-            target = os.readlink(filepath)
-
-            contents.append({
-                'name': file,
-                'size': "--",
-                'updated': int(stat.st_mtime),
-                'type': 'symlink',
-                'target': target,
-            })
-
-        else:
-            contents.append({
-                'name': file,
-                'size': "%.2f KB" % ((stat.st_size) / 1024),
-                'updated': int(stat.st_mtime),
-                'type': 'regular',
-            })
+    contents = api_user_contents(username, flist.user_path)
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -449,19 +475,17 @@ def api_inspect_light(username, flist):
 
 
 @app.route('/api/flist/me', methods=['GET'])
+@hub.itsyouonline.requires_auth()
 def api_my_myself():
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
+    username = session['username']
 
-    return api_response(extra={"username": request.environ['username']})
+    return api_response(extra={"username": username})
 
 
 @app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
+@hub.itsyouonline.requires_auth()
 def api_my_inspect(flist):
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     if request.method == 'DELETE':
         return api_delete(username, flist)
@@ -469,20 +493,16 @@ def api_my_inspect(flist):
     return api_inspect(username, flist)
 
 @app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
+@hub.itsyouonline.requires_auth()
 def api_my_flist(source, linkname):
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     return api_symlink(username, source, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
+@hub.itsyouonline.requires_auth()
 def api_my_rename(source, destination):
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
     flist = HubPublicFlist(config, username, source)
     destflist = HubPublicFlist(config, username, destination)
 
@@ -497,20 +517,16 @@ def api_my_rename(source, destination):
     return api_response()
 
 @app.route('/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>', methods=['GET'])
+@hub.itsyouonline.requires_auth()
 def api_my_promote(sourcerepo, sourcefile, localname):
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     return api_promote(username, sourcerepo, sourcefile, localname)
 
 @app.route('/api/flist/me/upload', methods=['POST'])
+@hub.itsyouonline.requires_auth()
 def api_my_upload():
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     response = api_flist_upload(request, username)
     if response['status'] == 'success':
@@ -524,11 +540,9 @@ def api_my_upload():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/upload-flist', methods=['POST'])
+@hub.itsyouonline.requires_auth()
 def api_my_upload_flist():
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     response = api_flist_upload(request, username, validate=True)
     if response['status'] == 'success':
@@ -542,11 +556,9 @@ def api_my_upload_flist():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/merge/<target>', methods=['POST'])
+@hub.itsyouonline.requires_auth()
 def api_my_merge(target):
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     sources = request.get_json(silent=True, force=True)
     data = flist_merge_data(sources, target)
@@ -563,11 +575,9 @@ def api_my_merge(target):
     return api_response()
 
 @app.route('/api/flist/me/docker', methods=['POST'])
+@hub.itsyouonline.requires_auth()
 def api_my_docker():
-    if not request.environ['username']:
-        return api_response("Access denied", 401)
-
-    username = request.environ['username']
+    username = session['username']
 
     if not request.form.get("image"):
         return api_response("missing docker image name", 400)
@@ -738,8 +748,14 @@ def api_flist_upload(request, username, validate=False):
     return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
 
 def api_repositories():
-    root = sorted(os.listdir(config['public-directory']))
     output = []
+
+    try:
+        root = sorted(os.listdir(config['public-directory']))
+
+    except FileNotFoundError as e:
+        print(e)
+        root = []
 
     for user in root:
         target = os.path.join(config['public-directory'], user)
@@ -752,6 +768,48 @@ def api_repositories():
         output.append({'name': user, 'official': official})
 
     return output
+
+def api_user_contents(username, userpath):
+    files = sorted(os.listdir(userpath))
+    contents = []
+
+    for file in files:
+        filepath = os.path.join(config['public-directory'], username, file)
+        stat = os.lstat(filepath)
+
+        if S_ISLNK(stat.st_mode):
+            target = os.readlink(filepath)
+
+            contents.append({
+                'name': file,
+                'size': "--",
+                'updated': int(stat.st_mtime),
+                'type': 'symlink',
+                'target': target,
+            })
+
+        else:
+            contents.append({
+                'name': file,
+                'size': "%.2f KB" % ((stat.st_size) / 1024),
+                'updated': int(stat.st_mtime),
+                'type': 'regular',
+            })
+
+    return contents
+
+def api_fileslist():
+    repositories = api_repositories()
+    fileslist = {}
+
+    for repository in repositories:
+        flist = HubPublicFlist(config, repository['name'], "unknown")
+        contents = api_user_contents(flist.username, flist.user_path)
+
+        fileslist[repository['name']] = contents
+
+    return fileslist
+
 
 def api_contents(flist):
     flist.raw.loadsv2(flist.target)

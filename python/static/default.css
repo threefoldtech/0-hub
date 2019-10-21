@@ -51,3 +51,22 @@ table#files span.glyphicon-eye-open {
     color: #4D4D4D;
     margin-right: 5px;
 }
+
+
+.search-form {
+    text-align: center;
+    width: 100%;
+    padding: 1em 1em 2em 1em;
+}
+
+input#search {
+    width: 80%;
+}
+
+table#entries {
+    display: none;
+}
+
+.loading {
+    text-align: center;
+}

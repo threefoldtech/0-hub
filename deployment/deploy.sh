@@ -21,7 +21,9 @@ dependencies() {
         libtar-dev libb2-dev autoconf libtool libjansson-dev \
         libhiredis-dev libsqlite3-dev tmux vim \
         python3-flask python3-redis python3-docker python3-pytoml \
-        libssl-dev
+        libssl-dev python3-pip
+
+    pip3 install python-jose
 }
 
 libcurl() {
@@ -69,22 +71,15 @@ zeroflist() {
     make production
     popd
 
-    cp zflist/zflist /tmp/zflist
-    strip -s /tmp/zflist
-
     popd
 }
 
 hub() {
-    git clone -b zflist https://github.com/threefoldtech/0-hub $1
+    git clone -b playground https://github.com/threefoldtech/0-hub $1
 
     cp $1/python/config.py.sample $1/python/config.py
-    cp $1/Caddyfile.sample $1/Caddyfile
 
-    sed -i "s/__PYTHON_HOST__:5000/127.0.0.1:5555/g" $1/Caddyfile
-    sed -i "s/0.0.0.0:2015/0.0.0.0:80/g" $1/Caddyfile
-
-    # FIXME: missing caddy
+    sed -i "s/'authentication': True/'authentication': False/" $1/python/config.py
 }
 
 set -ex
