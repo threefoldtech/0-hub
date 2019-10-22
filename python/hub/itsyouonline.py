@@ -136,7 +136,7 @@ def requires_auth():
                     username = jwt_info["username"]
 
                 except:
-                    return json.dumps({"status": "error", "message": "invalid token"}), 403
+                    return json.dumps({"status": "error", "message": "invalid token"}) + "\n", 403
 
                 session["_iyo_authenticated"] = time.time()
                 session["iyo_jwt"] = jwt_string
