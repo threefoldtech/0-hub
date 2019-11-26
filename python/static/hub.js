@@ -32,8 +32,18 @@ function flists(files, username) {
         var seelink = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
 
         var filetd = $('<td>').append(fileicon).append(filelink);
-        if(file['type'] == 'symlink')
-            filetd.append($('<span>').html(" ➔ " + file['target']));
+        if(file['type'] == 'symlink') {
+            var localusername = username;
+
+            // cross repository symlink
+            if(file['target'].includes("/"))
+                localusername = '..';
+
+            var link = localusername + '/' + file['target'] + '.md';
+
+            filetd.append($('<span>').html(" ➔ "));
+            filetd.append($('<a>', {'href': link}).html(file['target']));
+        }
 
         var tr = $('<tr>');
         tr.append(filetd);
