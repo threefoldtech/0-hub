@@ -71,6 +71,8 @@ See example below.
   - **DELETE**: remove that specific flist
 - `/api/flist/me/<source>/link/<linkname>` (**GET**)
   - Create a symbolic link `linkname` pointing to `source`
+- `/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>` (**GET**)
+  - Create a cross-repository symbolic link `linkname` pointing to `repository/sourcename`
 - `/api/flist/me/<source>/rename/<destination>` (**GET**)
   - Rename `source` to `destination`
 - `/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>` (**GET**)
