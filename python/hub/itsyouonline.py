@@ -1,8 +1,9 @@
 import re
 import time
 import uuid
-from jose import jwt
 import requests
+import json
+from jose import jwt
 from flask import current_app, redirect, request, session, flash
 from functools import wraps
 from urllib.parse import urlencode
@@ -135,7 +136,7 @@ def requires_auth():
                     username = jwt_info["username"]
 
                 except:
-                    return "Could not authorize this request", 403
+                    return json.dumps({"status": "error", "message": "invalid token"}) + "\n", 403
 
                 session["_iyo_authenticated"] = time.time()
                 session["iyo_jwt"] = jwt_string

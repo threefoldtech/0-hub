@@ -494,10 +494,17 @@ def api_my_inspect(flist):
 
 @app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
 @hub.itsyouonline.requires_auth()
-def api_my_flist(source, linkname):
+def api_my_symlink(source, linkname):
     username = session['username']
 
     return api_symlink(username, source, linkname)
+
+@app.route('/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>', methods=['GET'])
+@hub.itsyouonline.requires_auth()
+def api_my_crosssymlink(linkname, repository, sourcename):
+    username = session['username']
+
+    return api_cross_symlink(username, repository, sourcename, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
 @hub.itsyouonline.requires_auth()
@@ -639,6 +646,33 @@ def api_symlink(username, source, linkname):
 
     return api_response()
 
+def api_cross_symlink(username, repository, sourcename, linkname):
+    flist = HubPublicFlist(config, repository, sourcename)
+    linkflist = HubPublicFlist(config, username, linkname)
+
+    if not flist.user_exists:
+        return api_response("source repository not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    # remove previous symlink if existing
+    if os.path.islink(linkflist.target):
+        os.unlink(linkflist.target)
+
+    # if it was not a link but a regular file, we don't overwrite
+    # existing flist, we only allows updating links
+    if os.path.isfile(linkflist.target):
+        return api_response("link destination is already a file", 401)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.symlink("../" + flist.username + "/" + flist.filename, linkflist.filename)
+    os.chdir(cwd)
+
+    return api_response()
+
 def api_promote(username, sourcerepo, sourcefile, targetname):
     flist = HubPublicFlist(config, sourcerepo, sourcefile)
     destination = HubPublicFlist(config, username, targetname)
@@ -769,6 +803,9 @@ def api_repositories():
 
     return output
 
+def clean_symlink(linkname):
+    return linkname.replace("../", "")
+
 def api_user_contents(username, userpath):
     files = sorted(os.listdir(userpath))
     contents = []
@@ -785,7 +822,7 @@ def api_user_contents(username, userpath):
                 'size': "--",
                 'updated': int(stat.st_mtime),
                 'type': 'symlink',
-                'target': target,
+                'target': clean_symlink(target),
             })
 
         else:
