@@ -76,7 +76,7 @@ class ThreeBotAuthenticator:
                 print("Could not decrypt cipher")
                 return 'Unable to decrypt payload, denied.', 400
 
-            values = json.loads(payload)
+            values = json.loads(payload.decode('utf-8'))
             if values['email']['verified'] == None:
                 return 'Email unverified, access denied.', 400
 
