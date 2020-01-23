@@ -1,8 +1,9 @@
 import os
 import shutil
 import json
-from jose import jwt
 import hub.itsyouonline
+import hub.threebot
+import hub.security
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
@@ -61,6 +62,8 @@ if config['authentication']:
         config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
         '/_iyo_callback', None, True, True, 'organization'
     )
+
+    hub.threebot.configure(app, config['threebot_appid'], config['threebot_privatekey'])
 
 else:
     hub.itsyouonline.disabled(app)
@@ -194,6 +197,7 @@ def flist_merge_data(sources, target):
 
     return data
 
+
 ######################################
 #
 # ROUTING ACTIONS
@@ -201,11 +205,20 @@ def flist_merge_data(sources, target):
 ######################################
 @app.route('/logout')
 def logout():
-    hub.itsyouonline.force_invalidate_session()
+    hub.security.invalidate()
+    return internalRedirect("users.html")
+
+@app.route('/login-method')
+def login_method():
+    return internalRedirect("logins.html")
+
+@app.route('/login-iyo')
+@hub.itsyouonline.requires_auth()
+def login_iyo():
     return internalRedirect("users.html")
 
 @app.route('/upload', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def upload_file():
     username = session['username']
 
@@ -221,7 +234,7 @@ def upload_file():
     return internalRedirect("upload.html")
 
 @app.route('/upload-flist', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def upload_file_flist():
     username = session['username']
 
@@ -237,7 +250,7 @@ def upload_file_flist():
     return internalRedirect("upload-flist.html")
 
 @app.route('/merge', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def flist_merge():
     username = session['username']
 
@@ -261,7 +274,7 @@ def flist_merge():
     return internalRedirect("merge.html")
 
 @app.route('/docker-convert', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def docker_handler():
     username = session['username']
 
