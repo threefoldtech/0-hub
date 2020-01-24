@@ -759,9 +759,9 @@ def api_flist_upload(request, username, validate=False):
     # we don't need to create the flist, we just ensure the
     # contents is on the backend
     else:
-        flist.raw.loadsv2(source)
-        stats = flist.raw.validatev2()
-        if stats['failure'] > 0:
+        flist.loads(source)
+        stats = flist.validate()
+        if stats['response']['failure'] > 0:
             return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
 
         flist.commit()
@@ -839,10 +839,10 @@ def api_fileslist():
 
 
 def api_contents(flist):
-    flist.raw.loadsv2(flist.target)
-    contents = flist.raw.listingv2()
+    flist.loads(flist.target)
+    contents = flist.contents()
 
-    return contents
+    return contents["response"]
 
 def api_flist_info(flist):
     stat = os.lstat(flist.target)

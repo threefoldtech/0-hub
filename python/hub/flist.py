@@ -16,15 +16,24 @@ class HubFlist:
 
         self.zflist = config['zflist-bin']
 
-        self.backopt = {
+        self.backstr = json.dumps({
             'host': config['backend-internal-host'],
             'port': config['backend-internal-port'],
-            'nspass': config['backend-internal-pass'],
-            'password': None,
-            'ssl': False
-        }
+            'password': config['backend-internal-pass'],
+        })
 
         self.tmpdir = None
+        self.worksp = self.workspace()
+        self.workdir = self.worksp.name
+        self.source = None
+
+        self.environ = dict(
+            os.environ,
+            ZFLIST_MNT=self.workdir,
+            ZFLIST_BACKEND=self.backstr,
+            ZFLIST_JSON="1"
+        )
+
 
     def ensure(self, target):
         if not os.path.exists(target):
@@ -46,51 +55,51 @@ class HubFlist:
 
         return 0
 
+    def execute(self, command, args=[]):
+        command = [self.zflist, command] + args
+        print(command)
+
+        p = subprocess.Popen(command, env=self.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p.wait()
+
+        print(output, err)
+
+        return json.loads(output.decode("utf-8"))
+
     def workspace(self, prefix="workspace-"):
         return tempfile.TemporaryDirectory(prefix=prefix, dir=self.config['flist-work-directory'])
 
-    def loadsv2(self, source):
-        self.sourcev2 = source
+    def loads(self, source):
+        self.source = source
 
-    def listingv2(self):
-        args = [self.zflist, "--list", "--action", "json", "--archive", self.sourcev2]
+    def contents(self):
+        self.execute("open", [self.source])
+        ls = self.execute("find")
+        self.execute("close")
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
-        p.wait()
+        return ls
 
-        return json.loads(output.decode('utf-8'))
+    def validate(self):
+        valbackend = [
+            "--host", self.config['backend-internal-host'],
+            "--port", str(self.config['backend-internal-port'])
+        ]
 
-    def validatev2(self):
-        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
-        args = [self.zflist, "--list", "--action", "check", "--archive", self.sourcev2, "--backend", backend, "--json"]
+        self.execute("open", [self.source])
+        self.execute("metadata", ["backend"] + valbackend)
+        check = self.execute("check")
+        self.execute("close")
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
-        p.wait()
-
-        print(output)
-
-        return json.loads(output.decode('utf-8'))
+        return check
 
     def create(self, rootdir, target):
-        backend = "%s:%d" % (self.backopt['host'], self.backopt['port'])
-        args = [self.zflist, "--create", rootdir, "--archive", target, "--backend", backend, '--json']
+        self.execute("init")
+        putdir = self.execute("putdir", [rootdir, "/"])
+        self.execute("commit", [target])
+        self.execute("close")
 
-        if self.config['backend-internal-pass']:
-            args.append('--password')
-            args.append(self.config['backend-internal-pass'])
-
-        p = subprocess.Popen(args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
-        # p = subprocess.Popen(args)
-        # p.wait()
-
-        print(output)
-        print(err)
-
-        return json.loads(output.decode('utf-8'))
-        # return True
+        return putdir
 
     def checksum(self, target):
         """
@@ -112,17 +121,18 @@ class HubFlist:
     def merge(self, target, sources):
         fixedsources = []
         for source in sources:
-            fixedsources.append("--merge")
             fixedsources.append(os.path.join(self.config['public-directory'], source))
 
-        args = [self.zflist, "--archive", target, "--json"] + fixedsources
-        print(args)
+        self.execute("open", [fixedsources[0]])
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
-        p.wait()
+        for source in fixedsources[1:]:
+            merge = self.execute("merge", [source])
 
-        # return json.loads(output.decode('utf-8'))
+            if not merge["success"]:
+                return False
+
+        self.execute("commit", [target])
+
         return True
 
 class HubPublicFlist:
@@ -138,9 +148,18 @@ class HubPublicFlist:
         self.raw = HubFlist(config)
 
     def commit(self):
-        if self.raw.sourcev2 != self.target:
+        if self.raw.source != self.target:
             self.user_create()
-            shutil.copyfile(self.raw.sourcev2, self.target)
+            shutil.copyfile(self.raw.source, self.target)
+
+    def loads(self, source):
+        return self.raw.loads(source)
+
+    def contents(self):
+        return self.raw.contents()
+
+    def validate(self):
+        return self.raw.validate()
 
     @property
     def target(self):
