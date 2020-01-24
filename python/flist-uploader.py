@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
-from hub.flist import HubFlist, HubPublicFlist
+from hub.flist import HubPublicFlist
 from hub.docker import HubDocker
 
 #
@@ -765,29 +765,6 @@ def api_flist_upload(request, username, validate=False):
             return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
 
         flist.commit()
-
-    """
-    # validate if the flist exists
-    if not validate:
-        # extracting archive to workspace
-        workspace = flist.raw.workspace()
-
-        # create the flist
-        flist.raw.unpack(source, workspace.name)
-        flist.raw.initialize(workspace.name)
-        flist.raw.insert(workspace.name)
-        flist.raw.upload()
-
-    else:
-        # loads content
-        flist.raw.loads(source)
-        if not flist.raw.validate():
-            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
-
-    flist.raw.commit()
-    flist.user_create()
-    flist.raw.pack(flist.target)
-    """
 
     # removing uploaded source file
     os.unlink(source)

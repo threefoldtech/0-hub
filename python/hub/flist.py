@@ -16,15 +16,6 @@ class HubFlist:
 
         self.zflist = config['zflist-bin']
 
-        """
-        self.backopt = {
-            'host': "172.17.0.10",
-            'port': 46379,
-            'password': '....',
-            'ssl': True
-        }
-        """
-
         self.backopt = {
             'host': config['backend-internal-host'],
             'port': config['backend-internal-port'],
@@ -34,22 +25,10 @@ class HubFlist:
         }
 
         self.tmpdir = None
-        self.flist = None
 
     def ensure(self, target):
         if not os.path.exists(target):
             os.mkdir(target)
-
-    def backend(self):
-        """
-        Connect the backend
-        """
-        return redis.Redis(
-            self.backopt['host'],
-            self.backopt['port'],
-            password=self.backopt['password'],
-            ssl=self.backopt['ssl']
-        )
 
     def unpack(self, filepath, target=None):
         """
@@ -66,6 +45,7 @@ class HubFlist:
         p.wait()
 
         return 0
+
     def workspace(self, prefix="workspace-"):
         return tempfile.TemporaryDirectory(prefix=prefix, dir=self.config['flist-work-directory'])
 
