@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Zero-OS Hub{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron">
+    <div class="container">
+        <h1>Authentication</h1>
+        <p>You can choose between two modes of authentication. The 3bot authentication is the recommended way
+        and will be the only one supported later. You can still use the legacy It's You Online authentication
+        but this one will be deprecated anytime soon.
+        </p>
+    </div>
+</div>
+
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 text-center" style="padding: 2em;">
+            <a href="/login" class="btn btn-success">Login with 3bot</a>
+            <div style="margin: 5em;">
+                <a href="/login">
+                <img src="/static/images/threebot.png" alt="3bot login" style="width: 300px;"/>
+                </a>
+            </div>
+        </div>
+        <div class="col-md-6 text-center" style="padding: 2em;">
+            <a href="/login-iyo" class="btn btn-warning">Login with It's You Online</a>
+            <div style="margin: 5em;">
+                <a href="/login-iyo">
+                <img src="/static/images/iyo.png" alt="Its You Online login" style="width: 300px;" />
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -82,6 +82,7 @@ class HubDocker:
         #
         print("[+] docker-convert: creating target directory")
         tmpdir = tempfile.TemporaryDirectory(prefix=dockername, dir=self.config['docker-work-directory'])
+        os.chmod(tmpdir.name, 0o755)
 
         print("[+] docker-convert: dumping files to: %s" % tmpdir.name)
         subprocess.call(['sh', '-c', 'docker export %s | tar -xpf - -C %s' % (dockername, tmpdir.name)])
@@ -118,13 +119,6 @@ class HubDocker:
         flist = HubPublicFlist(self.config, username, flistname)
         flist.user_create()
         flist.raw.create(tmpdir.name, flist.target)
-
-        """
-        flist.raw.initialize(tmpdir.name)
-        flist.raw.insert(tmpdir.name)
-        flist.raw.upload()
-        flist.raw.pack(flist.target)
-        """
 
         print("[+] docker-convert: cleaning temporary files")
         tmpdir.cleanup()

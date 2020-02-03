@@ -18,19 +18,13 @@ MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
 6+Vq5t5B0V0Ehy01+2ceEon2Y0XDkIKv
 -----END PUBLIC KEY-----"""
 
-
-def force_invalidate_session():
-    items = ['_iyo_authenticated', 'iyo_jwt', 'accounts', 'username']
-    for item in items:
-        if item in session:
-            del session[item]
-
+"""
 def _invalidate_session():
     authenticated_ = session.get('_iyo_authenticated')
 
     if not authenticated_ or authenticated_ + 300 < time.time():
         force_invalidate_session()
-
+"""
 
 def disabled(app):
     app.config['authentication'] = False
@@ -47,7 +41,7 @@ def configure(app, client_id, client_secret, callback_uri, callback_route, scope
     @param scope: Extra scope to request from Itsyou.Online
     @param get_jwt: Set to True to also create a jwt for the authenticated user
     """
-    app.before_request(_invalidate_session)
+    # app.before_request(_invalidate_session)
     app.config['authentication'] = True
     app.config['iyo_config'] = dict(
         client_id=client_id,
@@ -215,6 +209,7 @@ def _callback():
 
     # Get user info
     session['_iyo_authenticated'] = time.time()
+    session['authenticated'] = True
     session['accounts'] = _extract_accounts(username, response['scope'])
     session['username'] = username
 

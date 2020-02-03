@@ -1,15 +1,16 @@
 import os
 import shutil
 import json
-from jose import jwt
 import hub.itsyouonline
+import hub.threebot
+import hub.security
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
-from hub.flist import HubFlist, HubPublicFlist
+from hub.flist import HubPublicFlist
 from hub.docker import HubDocker
 
 #
@@ -61,6 +62,8 @@ if config['authentication']:
         config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
         '/_iyo_callback', None, True, True, 'organization'
     )
+
+    hub.threebot.configure(app, config['threebot_appid'], config['threebot_privatekey'])
 
 else:
     hub.itsyouonline.disabled(app)
@@ -194,6 +197,7 @@ def flist_merge_data(sources, target):
 
     return data
 
+
 ######################################
 #
 # ROUTING ACTIONS
@@ -201,11 +205,20 @@ def flist_merge_data(sources, target):
 ######################################
 @app.route('/logout')
 def logout():
-    hub.itsyouonline.force_invalidate_session()
+    hub.security.invalidate()
+    return internalRedirect("users.html")
+
+@app.route('/login-method')
+def login_method():
+    return internalRedirect("logins.html")
+
+@app.route('/login-iyo')
+@hub.itsyouonline.requires_auth()
+def login_iyo():
     return internalRedirect("users.html")
 
 @app.route('/upload', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def upload_file():
     username = session['username']
 
@@ -221,7 +234,7 @@ def upload_file():
     return internalRedirect("upload.html")
 
 @app.route('/upload-flist', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def upload_file_flist():
     username = session['username']
 
@@ -237,7 +250,7 @@ def upload_file_flist():
     return internalRedirect("upload-flist.html")
 
 @app.route('/merge', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def flist_merge():
     username = session['username']
 
@@ -261,7 +274,7 @@ def flist_merge():
     return internalRedirect("merge.html")
 
 @app.route('/docker-convert', methods=['GET', 'POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.protected()
 def docker_handler():
     username = session['username']
 
@@ -746,35 +759,12 @@ def api_flist_upload(request, username, validate=False):
     # we don't need to create the flist, we just ensure the
     # contents is on the backend
     else:
-        flist.raw.loadsv2(source)
-        stats = flist.raw.validatev2()
-        if stats['failure'] > 0:
+        flist.loads(source)
+        stats = flist.validate()
+        if stats['response']['failure'] > 0:
             return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
 
         flist.commit()
-
-    """
-    # validate if the flist exists
-    if not validate:
-        # extracting archive to workspace
-        workspace = flist.raw.workspace()
-
-        # create the flist
-        flist.raw.unpack(source, workspace.name)
-        flist.raw.initialize(workspace.name)
-        flist.raw.insert(workspace.name)
-        flist.raw.upload()
-
-    else:
-        # loads content
-        flist.raw.loads(source)
-        if not flist.raw.validate():
-            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
-
-    flist.raw.commit()
-    flist.user_create()
-    flist.raw.pack(flist.target)
-    """
 
     # removing uploaded source file
     os.unlink(source)
@@ -849,10 +839,10 @@ def api_fileslist():
 
 
 def api_contents(flist):
-    flist.raw.loadsv2(flist.target)
-    contents = flist.raw.listingv2()
+    flist.loads(flist.target)
+    contents = flist.contents()
 
-    return contents
+    return contents["response"]
 
 def api_flist_info(flist):
     stat = os.lstat(flist.target)
