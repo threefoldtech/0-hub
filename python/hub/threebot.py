@@ -7,6 +7,7 @@ import requests
 import nacl.public
 import nacl.signing
 import base64
+import urllib.parse
 from flask import Flask, request, redirect, session
 
 
@@ -39,7 +40,8 @@ class ThreeBotAuthenticator:
         @self.app.route('/callback_threebot')
         def callback():
             if request.args.get("error"):
-                return "Authentication failed: %s" % request.args.get("error"), 400
+                message = urllib.parse.quote(request.args.get("error"))
+                return "Authentication failed: %s" % message, 400
 
             username = request.args.get('username')
 
