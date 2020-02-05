@@ -79,8 +79,10 @@ class ThreeBotAuthenticator:
                 return 'Unable to decrypt payload, denied.', 400
 
             values = json.loads(payload.decode('utf-8'))
-            if values['email']['verified'] == None:
-                return 'Email unverified, access denied.', 400
+
+            if values.get("email") is not None:
+                if values['email']['verified'] == None:
+                    return 'Email unverified, access denied.', 400
 
             print("[+] threebot: user '%s' authenticated" % username)
 
