@@ -21,7 +21,7 @@ dependencies() {
         libtar-dev libb2-dev autoconf libtool libjansson-dev \
         libhiredis-dev libsqlite3-dev tmux vim \
         python3-flask python3-redis python3-docker python3-pytoml \
-        libssl-dev python3-pip
+        libssl-dev python3-pip python3-requests python3-nacl
 
     pip3 install python-jose
 }
