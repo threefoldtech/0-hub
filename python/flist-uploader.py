@@ -7,7 +7,8 @@ import hub.security
 from stat import *
 from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
+# from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
 from hub.flist import HubPublicFlist
