@@ -43,22 +43,24 @@ class ThreeBotAuthenticator:
                 message = urllib.parse.quote(request.args.get("error"))
                 return "Authentication failed: %s" % message, 400
 
-            username = request.args.get('username')
+            if not request.args.get('signedAttempt'):
+                return "Could not parse server response" % message, 400
+
+            payload = json.loads(request.args.get('signedAttempt'))
+            username = payload['doubleName']
 
             # Signedhash contains state signed by user's bot key
-            signedhash = request.args.get('signedhash')
+            signedhash = payload['signedAttempt']
 
             # Fetching user's bot information (including public key)
             userinfo = requests.get("https://login.threefold.me/api/users/%s" % username).json()
             userpk = userinfo['publicKey']
 
-            # Loading data (which contains ciphertext and nonce)
-            data = json.loads(request.args.get("data"))
-
             # Verifying state signature
             try:
                 vkey = nacl.signing.VerifyKey(userpk, nacl.encoding.Base64Encoder)
-                vkey.verify(base64.b64decode(signedhash))
+                data = vkey.verify(base64.b64decode(signedhash))
+                data = json.loads(data)
 
             except:
                 print("Invalid signed hash")
@@ -69,16 +71,16 @@ class ThreeBotAuthenticator:
             # Decrypt the ciphertext with our private key and bot's public key
             try:
                 box = nacl.public.Box(self.privkey, ukey)
-                ciphertext = base64.b64decode(data['ciphertext'])
-                nonce = base64.b64decode(data['nonce'])
+                ciphertext = base64.b64decode(data['data']['ciphertext'])
+                nonce = base64.b64decode(data['data']['nonce'])
 
-                payload = box.decrypt(ciphertext, nonce)
+                response = box.decrypt(ciphertext, nonce)
 
             except:
                 print("Could not decrypt cipher")
                 return 'Unable to decrypt payload, denied.', 400
 
-            values = json.loads(payload.decode('utf-8'))
+            values = json.loads(response.decode('utf-8'))
 
             if values.get("email") is not None:
                 if values['email']['verified'] == None:
