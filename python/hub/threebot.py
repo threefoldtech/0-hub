@@ -60,7 +60,7 @@ class ThreeBotAuthenticator:
             try:
                 vkey = nacl.signing.VerifyKey(userpk, nacl.encoding.Base64Encoder)
                 data = vkey.verify(base64.b64decode(signedhash))
-                data = json.loads(data)
+                data = json.loads(data.decode('utf-8'))
 
             except:
                 print("Invalid signed hash")
