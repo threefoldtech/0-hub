@@ -1,8 +1,8 @@
 import redis
 import sys
 
-r = redis.Redis("hub.grid.tf", 9900)
-info = redis.client.parse_info(r.execute_command("NSINFO default"))
+r = redis.Redis("10.241.0.232", 9901)
+info = redis.client.parse_info(r.execute_command("NSINFO minio"))
 
 entries = info['entries']
 print("Keys: %d" % entries)
