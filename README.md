@@ -37,8 +37,8 @@ to make the backend up-to-date and upload a self-made flist. This allows you to 
 and gives you the full control of the chain. The only restriction is that the contents of the files you host
 on the flist needs to exists on the backend, otherwise your flist will be rejected.
 
-## Authentication via itsyou.online
-All the operations on the hub needs to be done via a `itsyou.online` authentication. Only downloading
+## Authentication via 3bot or itsyou.online
+All the operations on the hub needs to be done via a `3bot` (default) or `itsyou.online` (deprecated) authentication. Only downloading
 a flist can be done anonymously.
 
 ## Getting information through API
