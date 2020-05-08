@@ -24,6 +24,9 @@
             <h3>Archive Checksum (MD5)</h3>
             <pre>{{ checksum }}</pre>
 
+            <h2>Readme</h2>
+            <pre id="flist-readme"><a href="#" onclick="return readme();">Load the readme</a></pre>
+
             <h2>Contents</h2>
             <pre id="flist-contents"><a href="#" onclick="return contents();">Show the contents</a></pre>
         </p>
@@ -31,6 +34,21 @@
 </div>
 
 <script>
+function readme() {
+    $("#flist-readme").html("Loading...");
+
+    $.get('/api/flist/{{ targetuser }}/{{ flistname }}/readme', function(data) {
+        if(data['readme'] == null) {
+            $("#flist-readme").html("This archive doesn't have readme.");
+            return false;
+        }
+
+        $("#flist-readme").html(data['readme']);
+    });
+
+    return false;
+}
+
 function contents() {
     $("#flist-contents").html("Loading...");
 
