@@ -487,7 +487,7 @@ def api_inspect_light(username, flist):
 
     return response
 
-@app.route('/api/flist/<username>/<flist>/readme')
+@app.route('/api/flist/<username>/<flist>/metadata')
 def api_readme(username, flist):
     flist = HubPublicFlist(config, username, flist)
 
@@ -497,7 +497,7 @@ def api_readme(username, flist):
     if not flist.file_exists:
         return api_response("source not found", 404)
 
-    readme = api_flist_readme(flist)
+    readme = api_flist_md(flist)
 
     response = make_response(json.dumps(readme) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -861,9 +861,9 @@ def api_contents(flist):
 
     return contents["response"]
 
-def api_flist_readme(flist):
+def api_flist_md(flist):
     flist.loads(flist.target)
-    response = flist.readme()
+    response = flist.allmetadata()
 
     return response
 

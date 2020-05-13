@@ -126,9 +126,22 @@ class HubFlist:
 
         return check
 
+    def readme(self, rootdir):
+        files = [".README.md", ".README"]
+
+        for f in files:
+            fp = os.path.join(rootdir, f)
+
+            if os.path.exists(fp):
+                self.setreadme(fp)
+
     def create(self, rootdir, target):
         self.execute("init")
         putdir = self.execute("putdir", [rootdir, "/"])
+
+        # include optional readme
+        self.readme(rootdir)
+
         self.execute("commit", [target])
         self.execute("close")
 
@@ -175,35 +188,37 @@ class HubFlist:
         found = self.execute("stat", [filename])
         return found['success']
 
+    def metadata(self, metadata):
+        payload = self.execute("metadata", [metadata])
+
+        if not payload["success"]:
+            return None
+
+        return payload["response"]["value"]
+
+
+    def allmetadata(self):
+        if not self.opened:
+            self.open()
+
+        data = {}
+        entries = ["readme", "backend", "entrypoint", "environ", "port", "volume"]
+
+        for entry in entries:
+            data[entry] = self.metadata(entry)
+
+        self.close()
+
+        return data
+
     def localbackend(self):
         host = self.config['backend-public-host']
         port = self.config['backend-public-port']
 
         self.execute("metadata", ["backend", "--host", host, "--port", str(port)])
 
-    def cat(self, filename):
-        self.localbackend()
-        value = self.execute("cat", [filename], raw=True)
-
-        if value['status'] == 0:
-            return value['content']
-
-        return None
-
-    def readme(self):
-        readme = None
-        files = ["/.README.md", "/.README"]
-
-        self.open()
-
-        for f in files:
-            if self.exists(f):
-                readme = self.cat(f)
-                break
-
-        self.close()
-
-        return {"readme": readme}
+    def setreadme(self, filename):
+        self.execute("metadata", ["readme", "--import", filename])
 
 class HubPublicFlist:
     def __init__(self, config, username, flistname):
@@ -259,5 +274,5 @@ class HubPublicFlist:
     def merge(self, sources):
         return self.raw.merge(self.target, sources)
 
-    def readme(self):
-        return self.raw.readme()
+    def allmetadata(self):
+        return self.raw.allmetadata()
