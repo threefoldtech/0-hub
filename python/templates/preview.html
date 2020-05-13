@@ -3,6 +3,7 @@
 
 {% block content %}
 
+
 <div class="jumbotron">
     <div class="container">
         <ol class="breadcrumb">
@@ -25,7 +26,9 @@
             <pre>{{ checksum }}</pre>
 
             <h2>Readme</h2>
-            <pre id="flist-readme"><a href="#" onclick="return readme();">Load the readme</a></pre>
+            <article class="markdown-body" id="flist-readme">
+                <a class="initial" href="#" onclick="return readme();">Load the readme</a>
+            </article>
 
             <h2>Contents</h2>
             <pre id="flist-contents"><a href="#" onclick="return contents();">Show the contents</a></pre>
@@ -37,13 +40,13 @@
 function readme() {
     $("#flist-readme").html("Loading...");
 
-    $.get('/api/flist/{{ targetuser }}/{{ flistname }}/readme', function(data) {
+    $.get('/api/flist/{{ targetuser }}/{{ flistname }}/metadata', function(data) {
         if(data['readme'] == null) {
             $("#flist-readme").html("This archive doesn't have readme.");
             return false;
         }
 
-        $("#flist-readme").html(data['readme']);
+        $("#flist-readme").html(marked(data['readme']['readme']));
     });
 
     return false;
