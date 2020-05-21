@@ -26,6 +26,7 @@ class HubFlist:
         self.worksp = self.workspace()
         self.workdir = self.worksp.name
         self.source = None
+        self.opened = False
 
         self.environ = dict(
             os.environ,
@@ -55,17 +56,31 @@ class HubFlist:
 
         return 0
 
-    def execute(self, command, args=[]):
+    def execute(self, command, args=[], raw=False):
         command = [self.zflist, command] + args
         print(command)
 
+        # set json output depending on raw output or not
+        # this is useful for cat command
+        self.environ['ZFLIST_JSON'] = "1" if raw == False else "0"
+
         p = subprocess.Popen(command, env=self.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (output, err) = p.communicate()
-        p.wait()
+        code = p.wait()
 
-        print(output, err)
+        print(code, output, err)
 
-        return json.loads(output.decode("utf-8"))
+        if raw == True:
+            payload = {
+                'content': output.decode("utf-8")
+            }
+
+        else:
+            payload = json.loads(output.decode("utf-8"))
+
+        payload['status'] = code
+
+        return payload
 
     def workspace(self, prefix="workspace-"):
         return tempfile.TemporaryDirectory(prefix=prefix, dir=self.config['flist-work-directory'])
@@ -73,10 +88,28 @@ class HubFlist:
     def loads(self, source):
         self.source = source
 
-    def contents(self):
+    def open(self):
+        if self.opened:
+            return False
+
         self.execute("open", [self.source])
-        ls = self.execute("find")
+        self.opened = True
+
+        return True
+
+    def close(self):
+        if not self.opened:
+            return False
+
         self.execute("close")
+        self.opened = False
+
+        return True
+
+    def contents(self):
+        self.open()
+        ls = self.execute("find")
+        self.close()
 
         return ls
 
@@ -86,16 +119,29 @@ class HubFlist:
             "--port", str(self.config['backend-internal-port'])
         ]
 
-        self.execute("open", [self.source])
+        self.open()
         self.execute("metadata", ["backend"] + valbackend)
         check = self.execute("check")
-        self.execute("close")
+        self.close()
 
         return check
+
+    def readme(self, rootdir):
+        files = [".README.md", ".README"]
+
+        for f in files:
+            fp = os.path.join(rootdir, f)
+
+            if os.path.exists(fp):
+                self.setreadme(fp)
 
     def create(self, rootdir, target):
         self.execute("init")
         putdir = self.execute("putdir", [rootdir, "/"])
+
+        # include optional readme
+        self.readme(rootdir)
+
         self.execute("commit", [target])
         self.execute("close")
 
@@ -134,6 +180,45 @@ class HubFlist:
         self.execute("commit", [target])
 
         return True
+
+    def exists(self, filename):
+        if not self.opened:
+            return False
+
+        found = self.execute("stat", [filename])
+        return found['success']
+
+    def metadata(self, metadata):
+        payload = self.execute("metadata", [metadata])
+
+        if not payload["success"]:
+            return None
+
+        return payload["response"]["value"]
+
+
+    def allmetadata(self):
+        if not self.opened:
+            self.open()
+
+        data = {}
+        entries = ["readme", "backend", "entrypoint", "environ", "port", "volume"]
+
+        for entry in entries:
+            data[entry] = self.metadata(entry)
+
+        self.close()
+
+        return data
+
+    def localbackend(self):
+        host = self.config['backend-public-host']
+        port = self.config['backend-public-port']
+
+        self.execute("metadata", ["backend", "--host", host, "--port", str(port)])
+
+    def setreadme(self, filename):
+        self.execute("metadata", ["readme", "--import", filename])
 
 class HubPublicFlist:
     def __init__(self, config, username, flistname):
@@ -188,3 +273,6 @@ class HubPublicFlist:
 
     def merge(self, sources):
         return self.raw.merge(self.target, sources)
+
+    def allmetadata(self):
+        return self.raw.allmetadata()
