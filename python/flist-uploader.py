@@ -487,6 +487,22 @@ def api_inspect_light(username, flist):
 
     return response
 
+@app.route('/api/flist/<username>/<flist>/metadata')
+def api_readme(username, flist):
+    flist = HubPublicFlist(config, username, flist)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    readme = api_flist_md(flist)
+
+    response = make_response(json.dumps(readme) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
 
 @app.route('/api/flist/me', methods=['GET'])
 @hub.itsyouonline.requires_auth()
@@ -844,6 +860,12 @@ def api_contents(flist):
     contents = flist.contents()
 
     return contents["response"]
+
+def api_flist_md(flist):
+    flist.loads(flist.target)
+    response = flist.allmetadata()
+
+    return response
 
 def api_flist_info(flist):
     stat = os.lstat(flist.target)
