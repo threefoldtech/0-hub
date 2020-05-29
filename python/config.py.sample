@@ -87,9 +87,9 @@ config = {
     ##          you'll login to the hub
     ##  - Generate your keys
     ##  - You can now set the clientid, secret and callback here
-    'iyo_clientid': '',
-    'iyo_secret': '',
-    'iyo_callback': 'http://127.0.0.1:5555/_iyo_callback',
+    'iyo-clientid': '',
+    'iyo-secret': '',
+    'iyo-callback': 'http://127.0.0.1:5555/_iyo_callback',
 
     ## Authentication using threebot (3bot) is also provided
     ## and will be later the only one used.
@@ -107,8 +107,8 @@ config = {
     ##
     ## You also need to provide the appid, which is the host where
     ## the hub is hosted (which should be the same as public-website value
-    'threebot_privatekey': '',
-    'threebot_appid': 'hub.tld',
+    'threebot-privatekey': '',
+    'threebot-appid': 'hub.tld',
 
     ## When using authentication, there is also possible to hard code
     ## a 'guest' token, this token will be matched like an itsyou.online
