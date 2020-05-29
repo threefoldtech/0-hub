@@ -110,6 +110,18 @@ config = {
     'threebot_privatekey': '',
     'threebot_appid': 'hub.tld',
 
+    ## When using authentication, there is also possible to hard code
+    ## a 'guest' token, this token will be matched like an itsyou.online
+    ## token which still works for the api. This is a workaround to be able
+    ## to use the hub with a specific token and a shared global user in order
+    ## to test features.
+    ##
+    ## You can just use this token like a jwt token and being authenticated
+    ## as 'guest' user. Just set this to None to disable the feature.
+    ##
+    ## Any string valid, example: no5rjrsFpgXVxCd6bzicvyI7YmvhuTIs
+    'guest-token': None,
+
     ## The hub can works in two different mode: debug or release
     ##
     ## Debug Mode:
