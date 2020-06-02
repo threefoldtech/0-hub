@@ -60,11 +60,11 @@ app.secret_key = os.urandom(24)
 
 if config['authentication']:
     hub.itsyouonline.configure(app,
-        config['iyo_clientid'], config['iyo_secret'], config['iyo_callback'],
-        '/_iyo_callback', None, True, True, 'organization'
+        config['iyo-clientid'], config['iyo-secret'], config['iyo-callback'],
+        '/_iyo_callback', None, True, True, 'organization', config['guest-token']
     )
 
-    hub.threebot.configure(app, config['threebot_appid'], config['threebot_privatekey'])
+    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'])
 
 else:
     hub.itsyouonline.disabled(app)

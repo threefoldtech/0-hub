@@ -29,7 +29,7 @@ def _invalidate_session():
 def disabled(app):
     app.config['authentication'] = False
 
-def configure(app, client_id, client_secret, callback_uri, callback_route, scope=None, get_jwt=False, offline_access=False, orgfromrequest=False):
+def configure(app, client_id, client_secret, callback_uri, callback_route, scope=None, get_jwt=False, offline_access=False, orgfromrequest=False, guest_token=None):
     """
     @param app: Flask app object
     @param client_id: Itsyou.Online api client id
@@ -51,7 +51,8 @@ def configure(app, client_id, client_secret, callback_uri, callback_route, scope
         scope=scope,
         get_jwt=get_jwt,
         offline_access=offline_access,
-        orgfromrequest=orgfromrequest
+        orgfromrequest=orgfromrequest,
+        guest=guest_token,
     )
 
     app.add_url_rule(callback_route, '_callback', _callback)
@@ -130,7 +131,16 @@ def requires_auth():
                     username = jwt_info["username"]
 
                 except:
-                    return json.dumps({"status": "error", "message": "invalid token"}) + "\n", 403
+                    if jwt_string != current_app.config['iyo_config']['guest']:
+                        return json.dumps({"status": "error", "message": "invalid token"}) + "\n", 403
+
+                    print("[+] guest token requested")
+
+                    username = 'guest'
+                    jwt_info = {
+                        'username': username,
+                        'scope': []
+                    }
 
                 session["_iyo_authenticated"] = time.time()
                 session["iyo_jwt"] = jwt_string
