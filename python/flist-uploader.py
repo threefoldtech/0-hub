@@ -138,11 +138,13 @@ def uploadSuccess(flistname, filescount, home, username=None):
 
     return globalTemplate("success.html", settings)
 
-def internalRedirect(target, error=None):
+def internalRedirect(target, error=None, extra={}):
     settings = {
         'username': None,
         'accounts': [],
     }
+
+    settings.update(extra)
 
     if error:
         settings['error'] = error
@@ -289,15 +291,13 @@ def docker_handler():
         if not request.form.get("docker-input"):
             return internalRedirect("docker.html", "missing docker image name")
 
-        docker = HubDocker(config)
-        response = docker.convert(request.form.get("docker-input"), username)
+        docker = HubDocker(config, announcer)
+        print("[+] docker converter id: %s" % docker.jobid)
 
-        if response['status'] == 'success':
-            return uploadSuccess(response['flist'], 0, "")
+        job = threading.Thread(target=docker.convert, args=(request.form.get("docker-input"), username, ))
+        job.start()
 
-        if response['status'] == 'error':
-            return internalRedirect("docker.html", response['message'])
-
+        return internalRedirect("docker-progress.html", None, {'jobid': docker.jobid})
 
     # Docker page
     return internalRedirect("docker.html")
