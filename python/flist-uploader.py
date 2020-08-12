@@ -61,6 +61,9 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 app.secret_key = os.urandom(24)
 
+# notifications
+announcer = EventNotifier()
+
 if config['authentication']:
     hub.itsyouonline.configure(app,
         config['iyo-clientid'], config['iyo-secret'], config['iyo-callback'],
@@ -903,6 +906,34 @@ def api_response(error=None, code=200, extra=None):
     response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+#
+# notification subsystem (server-sent event)
+#
+@app.route('/listen/<id>', methods=['GET'])
+def listen(id):
+    print("[+] listening id: %s" % id)
+    def stream():
+        messages = announcer.listen(id)
+        while True:
+            msg = messages.get()
+
+            # reaching None means there is nothing more expected
+            # on this job, we can clean it up
+            if msg == None:
+                announcer.terminate(id)
+                return
+
+            yield msg
+
+    messages = announcer.listen(id)
+    if messages == None:
+        return announcer.error("job id not found"), 404
+
+    return Response(stream(), mimetype='text/event-stream')
+
+
 
 ######################################
 #
