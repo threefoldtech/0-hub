@@ -232,13 +232,16 @@ def upload_file():
     username = session['username']
 
     if request.method == 'POST':
-        response = api_flist_upload(request, username)
+        response = api_flist_upload_prepare(request, username)
+        return response
 
+        """
         if response['status'] == 'success':
             return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload.html", response['message'])
+        """
 
     return internalRedirect("upload.html")
 
@@ -792,6 +795,69 @@ def api_flist_upload(request, username, validate=False):
     os.unlink(source)
 
     return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
+
+def api_flist_upload_prepare(request, username, validate=False):
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        return {'status': 'error', 'message': 'no file found'}
+
+    file = request.files['file']
+
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        return {'status': 'error', 'message': 'no file selected'}
+
+    if not allowed_file(file.filename, validate):
+        return {'status': 'error', 'message': 'this file is not allowed'}
+
+    #
+    # processing the file
+    #
+    filename = secure_filename(file.filename)
+
+    print("[+] saving file")
+    source = os.path.join(config['upload-directory'], filename)
+    file.save(source)
+
+    cleanfilename = file_from_flist(filename)
+    flist = HubPublicFlist(config, username, cleanfilename, announcer)
+    flist.raw.newtask()
+
+    print("[+] flist creation id: %s" % flist.raw.jobid)
+
+    job = threading.Thread(target=flist.create, args=(source, ))
+    job.start()
+
+    return {'status': 'success', 'jobid': flist.raw.jobid}
+
+    """
+    print(flist.raw.jobid)
+
+    flist.user_create()
+
+    # it's a new flist, let's do the normal flow
+    if not validate:
+        workspace = flist.raw.workspace()
+        flist.raw.unpack(source, workspace.name)
+        stats = flist.raw.create(workspace.name, flist.target)
+
+    # we have an existing flist and checking contents
+    # we don't need to create the flist, we just ensure the
+    # contents is on the backend
+    else:
+        flist.loads(source)
+        stats = flist.validate()
+        if stats['response']['failure'] > 0:
+            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
+
+        flist.commit()
+
+    # removing uploaded source file
+    os.unlink(source)
+
+    return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
+    """
 
 def api_repositories():
     output = []

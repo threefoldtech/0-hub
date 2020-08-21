@@ -18,36 +18,163 @@
 </ol>
 
 <div id="progress" style="display: none;">
-    <h2>Uploading and processing... please wait.</h2>
+    <h2 id="progress-text">Preparing for upload...</h2>
     <div class="progress">
-        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="2" aria-valuemax="100" style="width: 2%">
         </div>
+    </div>
+
+    <div id="error-block" class="alert alert-danger" role="alert" style="display: none;">
+        <strong>Oops:</strong> <span class="message"></span>
+    </div>
+
+    <div id="info-block" class="alert alert-success" role="alert" style="display: none;">
+        <strong>Filename:</strong> <span class="filename"></span><br>
+        <strong>Files:</strong> <span class="files"></span><br>
+        <strong>Directories:</strong> <span class="directories"></span><br>
+        <strong>Symlinks:</strong> <span class="symlinks"></span><br>
+        <strong>Specials:</strong> <span class="specials"></span><br>
+        <strong>Size:</strong> <span class="fullsize"></span>
+    </div>
+
+    <div id="job" class="alert alert-info" role="alert" style="display: none;">
+        <strong>Job ID:</strong> <span id="jobid"></span>
     </div>
 </div>
 
 <div id="home" style="display: block;">
-    {% if error %}
-    <div class="alert alert-danger" role="alert">
-        <strong>Oops:</strong> {{ error }}
-    </div>
-    {% endif %}
-
     <div class="bg-info" style="padding: 25px;">
-        <form action="/upload" method="post" enctype="multipart/form-data">
-          <div class="form-group">
+        <div class="form-group">
             <label for="file">Your file:</label>
             <input type="file" id="file" name="file">
-          </div>
+        </div>
 
-          <button type="submit" class="btn btn-primary" onclick="uploadStarted()">Upload my files</button>
-        </form>
+        <button type="submit" class="btn btn-primary" onclick="uploadStarted()">Upload my files</button>
     </div>
 </div>
 
 <script type="text/javascript">
+function showError(message) {
+    $("#progress .progress-bar").addClass("progress-bar-danger");
+    $("#progress .progress-bar").removeClass("active");
+    $("#error-block").show();
+    $("#error-block .message").html(message);
+}
+
+function setProgress(percent) {
+    $("#progress .progress-bar").attr("aria-valuenow", percent);
+    $("#progress .progress-bar").css("width", percent + "%");
+}
+
+function rSize(value) {
+    if(value < 12 * 1024)
+        return (value / (1 << 10)).toFixed(1) + " KB";
+
+    return (value / (1 << 20)).toFixed(1) + " MB";
+}
+
 function uploadStarted() {
     $("#progress").show();
     $("#home").hide();
+
+    var xhr = new XMLHttpRequest();
+
+    var fd = new FormData();
+    fd.append("file", document.getElementById("file").files[0]);
+
+    xhr.open("POST", "/upload");
+    xhr.onprogress = function (e) {
+        if (e.lengthComputable) {
+            console.log(e.loaded + " / " + e.total)
+        }
+    }
+
+    xhr.onloadstart = function (e) {
+        $("#progress-text").html("Uploading archive...");
+    }
+
+    xhr.onloadend = function (e) {
+        $("#progress-text").html("Extracting archive...");
+        setProgress(55);
+    }
+
+    xhr.onload = function() {
+        if(this.status != 200) {
+            showError("HTTP Error " + this.status);
+            return;
+        }
+
+        var status = JSON.parse(this.response);
+        console.log(status);
+
+        if(status.status == "success") {
+            $("#job").show();
+            $("#jobid").html(status.jobid);
+
+            // update using job event
+            var evtSource = new EventSource('/listen/' + status.jobid);
+            evtSource.onmessage = onEventMessage;
+        }
+
+        if(status.status == "error") {
+            showError(status.message);
+        }
+    }
+
+    xhr.upload.addEventListener("progress", function(evt){
+        if(evt.lengthComputable) {
+            console.log("upload: " + evt.loaded + "/" + evt.total);
+            var pgstr = rSize(evt.loaded) + " / " + rSize(evt.total)
+
+            // total is half bar, adding 2 original percent
+            var prc = parseInt(((evt.loaded / evt.total) * 100) / 2) + 2;
+            console.log(prc);
+
+            $("#progress-text").html("Uploading archive... (" + pgstr + " )");
+            setProgress(prc);
+
+            if(evt.loaded == evt.total)
+                $("#progress-text").html("Verifying archive...")
+        }
+
+    }, false);
+
+    xhr.send(fd);
+}
+
+function onEventMessage(e) {
+    console.log(e.data);
+
+    var item = JSON.parse(e.data);
+
+    if(item.status == "update") {
+        $("#progress-text").html(item.message);
+
+        // reduce received percentage to fit our bar (52 -> 100%)
+        var percent = parseInt((item.progress / 100) * 45) + 55
+        setProgress(percent);
+
+        if(percent == 100) {
+            $("#progress .progress-bar").addClass("progress-bar-success");
+            $("#progress .progress-bar").removeClass("active");
+        }
+    }
+
+    if(item.status == "info") {
+        $("#info-block").show();
+        $("#info-block .filename").html(item.info.filename);
+        $("#info-block .files").html(item.info.flist.regular);
+        $("#info-block .directories").html(item.info.flist.directory);
+        $("#info-block .symlinks").html(item.info.flist.symlink);
+        $("#info-block .specials").html(item.info.flist.special);
+
+        var size = (item.info.flist.fullsize / (1 << 20)).toFixed(2)
+        $("#info-block .fullsize").html(size + ' MB (apparent)');
+    }
+
+    if(item.status == "error") {
+        showError(status.message);
+    }
 }
 </script>
 
