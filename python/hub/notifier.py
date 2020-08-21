@@ -40,7 +40,7 @@ class EventNotifier:
         return self.listeners[id]
 
     def format(self, data):
-        return f'data: {data}\n\n'
+        return "data: %s\n\n" % data
 
     def announce(self, id, msg):
         # print(id, msg)
