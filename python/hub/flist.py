@@ -5,10 +5,11 @@ import hashlib
 import tarfile
 import redis
 import json
+import uuid
 import shutil
 
 class HubFlist:
-    def __init__(self, config):
+    def __init__(self, config, announcer=None):
         self.config = config
 
         if 'zflist-bin' not in config:
@@ -27,14 +28,21 @@ class HubFlist:
         self.workdir = self.worksp.name
         self.source = None
         self.opened = False
+        self.jobid = str(uuid.uuid4())
+        self.announcer = announcer
 
         self.environ = dict(
             os.environ,
             ZFLIST_MNT=self.workdir,
             ZFLIST_BACKEND=self.backstr,
-            ZFLIST_JSON="1"
+            ZFLIST_JSON="1",
+            ZFLIST_PROGRESS="1"
         )
 
+
+    def newtask(self):
+        print("[+] initializing flist new task")
+        self.announcer.initialize(self.jobid)
 
     def ensure(self, target):
         if not os.path.exists(target):
@@ -64,16 +72,42 @@ class HubFlist:
         # this is useful for cat command
         self.environ['ZFLIST_JSON'] = "1" if raw == False else "0"
 
+        value = ""
         p = subprocess.Popen(command, env=self.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (output, err) = p.communicate()
-        code = p.wait()
+        # (output, err) = p.communicate()
 
-        print(code, output, err)
+        # progressing tracking
+        percentage = 0
+
+        while True:
+            output = p.stdout.readline()
+            if output == b'' and p.poll() is not None:
+                # end of stream
+                code = p.poll()
+                break
+
+            value = output.strip()
+            content = json.loads(value)
+            # print(content)
+
+            if 'status' in content and content['status'] == 'progress':
+                # only parse processing message
+                if content['message'] != 'processing':
+                    continue
+
+                # update percentage only if updated for client view
+                percent = int((content['current'] / content['total']) * 100)
+                if percent != percentage:
+                    message = "processing item %d of %d" % (content['current'], content['total'])
+                    self.progress("Building: %s" % message, percent)
+                    percentage = percent
+
+        # print(code, output, err)
+        output = value
+        print("Code: %d, %s" % (code, output))
 
         if raw == True:
-            payload = {
-                'content': output.decode("utf-8")
-            }
+            payload = {'content': output.decode("utf-8")}
 
         else:
             payload = json.loads(output.decode("utf-8"))
@@ -220,17 +254,25 @@ class HubFlist:
     def setreadme(self, filename):
         self.execute("metadata", ["readme", "--import", filename])
 
+    def notify(self, message):
+        self.announcer.push(self.jobid, message)
+
+    def progress(self, message, progression):
+        status = {"status": "update", "message": message, "progress": progression}
+        return self.notify(status)
+
 class HubPublicFlist:
-    def __init__(self, config, username, flistname):
+    def __init__(self, config, username, flistname, announcer=None):
         self.rootpath = config['public-directory']
         self.username = username
         self.filename = flistname
+        self.announcer = announcer
 
         # ensure we accept flist-name and flist-filename
         if not self.filename.endswith(".flist"):
             self.filename += ".flist"
 
-        self.raw = HubFlist(config)
+        self.raw = HubFlist(config, announcer)
 
     def commit(self):
         if self.raw.source != self.target:
@@ -245,6 +287,22 @@ class HubPublicFlist:
 
     def validate(self):
         return self.raw.validate()
+
+    def create(self, source):
+        self.user_create()
+
+        workspace = self.raw.workspace()
+        self.raw.unpack(source, workspace.name)
+        stats = self.raw.create(workspace.name, self.target)
+        os.unlink(source)
+
+        info = {"filename": self.filename, "flist": stats['response']}
+
+        self.raw.progress("Image ready !", 100)
+        self.raw.notify({"status": "info", "info": info})
+        self.announcer.finalize(self.raw.jobid)
+
+        return None
 
     @property
     def target(self):

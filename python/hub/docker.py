@@ -16,8 +16,8 @@ class HubDocker:
         self.lowlevel = docker.APIClient()
         self.config = config
         self.jobid = str(uuid.uuid4())
-
         self.announcer = announcer
+
         self.announcer.initialize(self.jobid)
         self.progress("Initializing docker converter", 0)
 
