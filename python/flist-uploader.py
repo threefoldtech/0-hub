@@ -743,7 +743,6 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
 
     return api_response(extra=status)
 
-
 def api_flist_upload(request, username, validate=False):
     # check if the post request has the file part
     if 'file' not in request.files:

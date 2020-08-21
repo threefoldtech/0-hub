@@ -255,6 +255,9 @@ class HubFlist:
         self.execute("metadata", ["readme", "--import", filename])
 
     def notify(self, message):
+        if self.announcer is None:
+            return
+
         self.announcer.push(self.jobid, message)
 
     def progress(self, message, progression):
