@@ -164,7 +164,7 @@ class HubDocker:
 
         flistname = dockerimage.replace(":", "-").replace('/', '-')
 
-        flist = HubPublicFlist(self.config, username, flistname)
+        flist = HubPublicFlist(self.config, username, flistname, self.announcer)
         flist.user_create()
         info = flist.raw.create(tmpdir.name, flist.target)
 
