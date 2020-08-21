@@ -87,7 +87,7 @@ class HubFlist:
                 break
 
             value = output.strip()
-            content = json.loads(value)
+            content = json.loads(value.decode('utf-8'))
             # print(content)
 
             if 'status' in content and content['status'] == 'progress':
