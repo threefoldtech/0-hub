@@ -110,7 +110,7 @@ class HubDocker:
             command = "/bin/sh"
 
         print("[+] docker-convert: starting temporary container")
-        self.progress("Initializing temporary container", 55)
+        self.progress("Initializing temporary container", 52)
 
         cn = self.dockerclient.containers.create(
             dockerimage,
@@ -127,7 +127,7 @@ class HubDocker:
         os.chmod(tmpdir.name, 0o755)
 
         print("[+] docker-convert: dumping files to: %s" % tmpdir.name)
-        self.progress("Extracting container root filesystem", 60)
+        self.progress("Extracting container root filesystem", 54)
 
         subprocess.call(['sh', '-c', 'docker export %s | tar -xpf - -C %s' % (dockername, tmpdir.name)])
 
@@ -135,7 +135,7 @@ class HubDocker:
         # docker init command to container startup command
         #
         print("[+] docker-convert: creating container entrypoint")
-        self.progress("Creating container metadata", 65)
+        self.progress("Creating container metadata", 55)
 
         command, args, env, cwd = self.container_boot(cn)
 
@@ -160,7 +160,7 @@ class HubDocker:
         # bundle the image
         #
         print("[+] docker-convert: parsing the flist")
-        self.progress("Building filesystem flist", 80)
+        self.progress("Preparing filesystem flist", 56)
 
         flistname = dockerimage.replace(":", "-").replace('/', '-')
 
