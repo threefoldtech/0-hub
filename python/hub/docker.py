@@ -12,8 +12,8 @@ from hub.flist import HubPublicFlist
 
 class HubDocker:
     def __init__(self, config, announcer):
-        self.dockerclient = docker.from_env()
-        self.lowlevel = docker.APIClient()
+        self.dockerclient = docker.from_env(timeout=240)
+        self.lowlevel = docker.APIClient(timeout=240)
         self.config = config
         self.jobid = str(uuid.uuid4())
         self.announcer = announcer
