@@ -52,6 +52,13 @@ evtSource.onmessage = function(e) {
 
     if(item.status == "update") {
         $("#status").html(item.message);
+
+        if(item.message.startsWith("Building: processing")) {
+            // reduce flist progress bar to fit 56 -> 95%
+            var progress = parseInt((item.progress / 100) * 44) + 56;
+            item.progress = progress;
+        }
+
         $("#progress .progress-bar").attr("aria-valuenow", item.progress);
         $("#progress .progress-bar").css("width", item.progress + "%");
 

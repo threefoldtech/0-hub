@@ -151,7 +151,7 @@ function onEventMessage(e) {
         $("#progress-text").html(item.message);
 
         // reduce received percentage to fit our bar (52 -> 100%)
-        var percent = parseInt((item.progress / 100) * 45) + 55
+        var percent = parseInt((item.progress / 100) * 45) + 55;
         setProgress(percent);
 
         if(percent == 100) {
