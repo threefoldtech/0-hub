@@ -169,14 +169,15 @@ class HubDocker:
         info = flist.raw.create(tmpdir.name, flist.target)
 
         print("[+] docker-convert: cleaning temporary files")
-        self.progress("Cleaning up environment", 95)
-
+        self.progress("Cleaning up temporary files", 95)
         tmpdir.cleanup()
 
         print("[+] docker-convert: destroying the container")
+        self.progress("Cleaning up container", 97)
         cn.remove(force=True)
 
         print("[+] docker-convert: cleaning up the docker image")
+        self.progress("Cleaning up docker image", 99)
         self.dockerclient.images.remove(dockerimage, force=True)
 
         if info['success'] == False:
