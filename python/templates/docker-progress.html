@@ -55,7 +55,7 @@ evtSource.onmessage = function(e) {
 
         if(item.message.startsWith("Building: processing")) {
             // reduce flist progress bar to fit 56 -> 95%
-            var progress = parseInt((item.progress / 100) * 44) + 56;
+            var progress = parseInt((item.progress / 100) * 39) + 56;
             item.progress = progress;
         }
 
