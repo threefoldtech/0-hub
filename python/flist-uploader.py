@@ -1,11 +1,13 @@
 import os
 import shutil
 import json
+import threading
+import time
 import hub.itsyouonline
 import hub.threebot
 import hub.security
 from stat import *
-from flask import Flask, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
+from flask import Flask, Response, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 # from werkzeug.contrib.fixers import ProxyFix
@@ -13,6 +15,7 @@ from werkzeug.wrappers import Request
 from config import config
 from hub.flist import HubPublicFlist
 from hub.docker import HubDocker
+from hub.notifier import EventNotifier
 
 #
 # runtime configuration
@@ -57,6 +60,9 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 app.secret_key = os.urandom(24)
+
+# notifications
+announcer = EventNotifier()
 
 if config['authentication']:
     hub.itsyouonline.configure(app,
@@ -132,11 +138,13 @@ def uploadSuccess(flistname, filescount, home, username=None):
 
     return globalTemplate("success.html", settings)
 
-def internalRedirect(target, error=None):
+def internalRedirect(target, error=None, extra={}):
     settings = {
         'username': None,
         'accounts': [],
     }
+
+    settings.update(extra)
 
     if error:
         settings['error'] = error
@@ -224,13 +232,16 @@ def upload_file():
     username = session['username']
 
     if request.method == 'POST':
-        response = api_flist_upload(request, username)
+        response = api_flist_upload_prepare(request, username)
+        return response
 
+        """
         if response['status'] == 'success':
             return uploadSuccess(response['flist'], response['stats'], response['home'])
 
         if response['status'] == 'error':
             return internalRedirect("upload.html", response['message'])
+        """
 
     return internalRedirect("upload.html")
 
@@ -283,15 +294,13 @@ def docker_handler():
         if not request.form.get("docker-input"):
             return internalRedirect("docker.html", "missing docker image name")
 
-        docker = HubDocker(config)
-        response = docker.convert(request.form.get("docker-input"), username)
+        docker = HubDocker(config, announcer)
+        print("[+] docker converter id: %s" % docker.jobid)
 
-        if response['status'] == 'success':
-            return uploadSuccess(response['flist'], 0, "")
+        job = threading.Thread(target=docker.convert, args=(request.form.get("docker-input"), username, ))
+        job.start()
 
-        if response['status'] == 'error':
-            return internalRedirect("docker.html", response['message'])
-
+        return internalRedirect("docker-progress.html", None, {'jobid': docker.jobid})
 
     # Docker page
     return internalRedirect("docker.html")
@@ -737,7 +746,6 @@ def api_promote(username, sourcerepo, sourcefile, targetname):
 
     return api_response(extra=status)
 
-
 def api_flist_upload(request, username, validate=False):
     # check if the post request has the file part
     if 'file' not in request.files:
@@ -787,6 +795,69 @@ def api_flist_upload(request, username, validate=False):
     os.unlink(source)
 
     return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
+
+def api_flist_upload_prepare(request, username, validate=False):
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        return {'status': 'error', 'message': 'no file found'}
+
+    file = request.files['file']
+
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        return {'status': 'error', 'message': 'no file selected'}
+
+    if not allowed_file(file.filename, validate):
+        return {'status': 'error', 'message': 'this file is not allowed'}
+
+    #
+    # processing the file
+    #
+    filename = secure_filename(file.filename)
+
+    print("[+] saving file")
+    source = os.path.join(config['upload-directory'], filename)
+    file.save(source)
+
+    cleanfilename = file_from_flist(filename)
+    flist = HubPublicFlist(config, username, cleanfilename, announcer)
+    flist.raw.newtask()
+
+    print("[+] flist creation id: %s" % flist.raw.jobid)
+
+    job = threading.Thread(target=flist.create, args=(source, ))
+    job.start()
+
+    return {'status': 'success', 'jobid': flist.raw.jobid}
+
+    """
+    print(flist.raw.jobid)
+
+    flist.user_create()
+
+    # it's a new flist, let's do the normal flow
+    if not validate:
+        workspace = flist.raw.workspace()
+        flist.raw.unpack(source, workspace.name)
+        stats = flist.raw.create(workspace.name, flist.target)
+
+    # we have an existing flist and checking contents
+    # we don't need to create the flist, we just ensure the
+    # contents is on the backend
+    else:
+        flist.loads(source)
+        stats = flist.validate()
+        if stats['response']['failure'] > 0:
+            return {'status': 'error', 'message': 'unauthorized upload, contents is not fully present on backend'}
+
+        flist.commit()
+
+    # removing uploaded source file
+    os.unlink(source)
+
+    return {'status': 'success', 'flist': flist.filename, 'home': username, 'stats': stats, 'timing': {}}
+    """
 
 def api_repositories():
     output = []
@@ -900,6 +971,34 @@ def api_response(error=None, code=200, extra=None):
     response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+#
+# notification subsystem (server-sent event)
+#
+@app.route('/listen/<id>', methods=['GET'])
+def listen(id):
+    print("[+] listening id: %s" % id)
+    def stream():
+        messages = announcer.listen(id)
+        while True:
+            msg = messages.get()
+
+            # reaching None means there is nothing more expected
+            # on this job, we can clean it up
+            if msg == None:
+                announcer.terminate(id)
+                return
+
+            yield msg
+
+    messages = announcer.listen(id)
+    if messages == None:
+        return announcer.error("job id not found"), 404
+
+    return Response(stream(), mimetype='text/event-stream')
+
+
 
 ######################################
 #
