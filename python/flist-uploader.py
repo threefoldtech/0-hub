@@ -628,7 +628,7 @@ def api_my_docker():
     if not request.form.get("image"):
         return api_response("missing docker image name", 400)
 
-    docker = HubDocker(config)
+    docker = HubDocker(config, announcer)
     response = docker.convert(request.form.get("image"), username)
 
     if response['status'] == 'success':
