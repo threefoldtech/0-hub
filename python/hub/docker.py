@@ -74,6 +74,7 @@ class HubDocker:
             self.notify({"status": "error", "message": response['message']})
 
         self.announcer.finalize(self.jobid)
+        return response
 
     def converter(self, dockerimage, username="dockers"):
         dockername = uuid.uuid4().hex
