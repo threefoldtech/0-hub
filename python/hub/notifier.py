@@ -6,7 +6,7 @@ class EventNotifier:
         self.listeners = {}
 
     def initialize(self, id):
-        q = queue.Queue(maxsize=4096)
+        q = queue.Queue(maxsize=8192)
         self.listeners[id] = q
         return q
 
