@@ -38,8 +38,8 @@ and gives you the full control of the chain. The only restriction is that the co
 on the flist needs to exists on the backend, otherwise your flist will be rejected.
 
 ## Authentication via 3bot or itsyou.online
-All the operations on the hub needs to be done via a `3bot` (default) or `itsyou.online` (deprecated) authentication. Only downloading
-a flist can be done anonymously.
+All the operations on the hub needs to be done via a `3bot` (default) or `itsyou.online` (deprecated) authentication.
+Only downloading a flist can be done anonymously.
 
 ## Getting information through API
 The hub host a basic REST API which can gives you some informations about flists, renaming them, remove them, etc.
@@ -109,7 +109,8 @@ There is a python client which can be found on the [client](client) directory.
 This make all of this more easy.
 
 # Backend
-Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db)
+Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db).
+You need both of them working before getting a working hub.
 
 # Documentation
 For full documentation, see the [`/docs`](/docs) directory.

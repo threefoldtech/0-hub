@@ -4,13 +4,24 @@
 config = {
     ## 0-db internal endpoint (host, port, optional password)
     ## Please note, the default namespace is always used
+    ##
+    ## For security reason, you should run your 0-db in protected
+    ## mode (--protect) with an admin password. This enable your to
+    ## get a 0-db with write access protected and public read access.
+    ##
+    ## If you don't set any password and don't run 0-db in protected
+    ## mode, anybody can delete/change 0-db contents.
+    ##
+    ## 0-db needs to run in 'user' mode, not sequential.
     'backend-internal-host': "my-zdb-host",
     'backend-internal-port': 9900,
     'backend-internal-pass': '',
 
     ## 0-db public endpoint (host, port), this will be used
     ## to provide user information how to reach the backend
-    ## when uploading something
+    ## when uploading something, this settings are applied on
+    ## flist metadata when used internally and are displayed
+    ## on the frontend but are not used for creation
     'backend-public-host': "hub.tld",
     'backend-public-port': 9900,
 
