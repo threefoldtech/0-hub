@@ -72,7 +72,7 @@ class HubFlist:
         # this is useful for cat command
         self.environ['ZFLIST_JSON'] = "1" if raw == False else "0"
 
-        value = ""
+        value = b''
         p = subprocess.Popen(command, env=self.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # (output, err) = p.communicate()
 
@@ -105,12 +105,13 @@ class HubFlist:
         # print(code, output, err)
         output = value
         print("Code: %d, %s" % (code, output))
+        print("Error: %s" % p.stderr.read())
 
         if raw == True:
             payload = {'content': output.decode("utf-8")}
 
         else:
-            payload = json.loads(output.decode("utf-8"))
+            payload = json.loads(output.decode("utf-8")) if output else {}
 
         payload['status'] = code
 
@@ -245,11 +246,18 @@ class HubFlist:
 
         return data
 
-    def localbackend(self):
+    def localbackend(self, password=False):
         host = self.config['backend-public-host']
         port = self.config['backend-public-port']
 
         self.execute("metadata", ["backend", "--host", host, "--port", str(port)])
+
+    def privatebackend(self, password=False):
+        host = self.config['backend-internal-host']
+        port = self.config['backend-internal-port']
+        pwd = self.config['backend-internal-pass']
+
+        self.execute("metadata", ["backend", "--host", host, "--port", str(port), '--password', pwd])
 
     def setreadme(self, filename):
         self.execute("metadata", ["readme", "--import", filename])
@@ -263,6 +271,21 @@ class HubFlist:
     def progress(self, message, progression):
         status = {"status": "update", "message": message, "progress": progression}
         return self.notify(status)
+
+    # run precheck (testing zflist and backend connectivity)
+    def check(self):
+        print("[+] flist: running 0-flist self-check")
+        test = self.execute("init")
+        if test['status'] != 0:
+            return False
+
+        self.privatebackend()
+
+        test = self.execute("check")
+        if test['status'] != 0:
+            return False
+
+        return True
 
 class HubPublicFlist:
     def __init__(self, config, username, flistname, announcer=None):

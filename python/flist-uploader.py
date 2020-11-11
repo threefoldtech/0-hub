@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import json
 import threading
@@ -13,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
-from hub.flist import HubPublicFlist
+from hub.flist import HubPublicFlist, HubFlist
 from hub.docker import HubDocker
 from hub.notifier import EventNotifier
 
@@ -51,6 +52,16 @@ print("[+] upload directory: %s" % config['upload-directory'])
 print("[+] flist creation  : %s" % config['flist-work-directory'])
 print("[+] docker creation : %s" % config['docker-work-directory'])
 print("[+] public directory: %s" % config['public-directory'])
+
+#
+# pre-check settings
+# checking configuration settings needed for runtime
+#
+hc = HubFlist(config)
+if not hc.check():
+    print("[-] pre-check: your local configuration seems not correct")
+    print("[-] pre-check: please check config.py settings and backend status")
+    sys.exit(1)
 
 #
 # initialize flask application
