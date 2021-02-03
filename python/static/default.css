@@ -89,3 +89,7 @@ article.markdown-body a.initial {
     color: #337ab7;
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
 }
+
+.input-info {
+    font-family: monospace;
+}

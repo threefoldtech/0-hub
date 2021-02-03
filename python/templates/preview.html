@@ -17,13 +17,34 @@
             This archive was uploaded by <code>{{ targetuser }}</code>.
 
             <h3>Source File</h3>
-            <pre>{{ flisturl }}</pre>
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="text" class="input-info form-control" id="flist-url" value="{{ flisturl }}" readonly>
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-primary btn-block" onclick="clipboard('#flist-url');">Copy</button>
+                    </div>
+                </div>
+            </div>
 
             <h3>Storage Address</h3>
-            <pre>{{ ardbhost }}</pre>
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="text" class="input-info form-control" id="storage-url" value="{{ ardbhost }}" readonly>
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-primary btn-block" onclick="clipboard('#storage-url');">Copy</button>
+                    </div>
+                </div>
+            </div>
 
             <h3>Archive Checksum (MD5)</h3>
-            <pre>{{ checksum }}</pre>
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="text" class="input-info form-control" id="checksum" value="{{ checksum }}" readonly>
+                    <div class="input-group-btn">
+                        <button type="button" class="btn btn-primary btn-block" onclick="clipboard('#checksum');">Copy</button>
+                    </div>
+                </div>
+            </div>
 
             <h2>Readme</h2>
             <article class="markdown-body" id="flist-readme">

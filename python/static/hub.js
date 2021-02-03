@@ -86,3 +86,13 @@ function fileslist(source) {
         }
     }
 }
+
+function clipboard(field) {
+    var input = document.body.appendChild(document.createElement("input"));
+    input.value = $(field).val();
+    input.focus();
+    input.select();
+
+    document.execCommand('copy');
+    input.parentNode.removeChild(input);
+}
