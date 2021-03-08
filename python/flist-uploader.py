@@ -531,7 +531,7 @@ def api_readme(username, flist):
     return response
 
 @app.route('/api/flist/me', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_myself():
     username = session['username']
 
@@ -539,7 +539,7 @@ def api_my_myself():
 
 
 @app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_inspect(flist):
     username = session['username']
 
@@ -549,21 +549,21 @@ def api_my_inspect(flist):
     return api_inspect(username, flist)
 
 @app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_symlink(source, linkname):
     username = session['username']
 
     return api_symlink(username, source, linkname)
 
 @app.route('/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_crosssymlink(linkname, repository, sourcename):
     username = session['username']
 
     return api_cross_symlink(username, repository, sourcename, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_rename(source, destination):
     username = session['username']
     flist = HubPublicFlist(config, username, source)
@@ -580,14 +580,14 @@ def api_my_rename(source, destination):
     return api_response()
 
 @app.route('/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_promote(sourcerepo, sourcefile, localname):
     username = session['username']
 
     return api_promote(username, sourcerepo, sourcefile, localname)
 
 @app.route('/api/flist/me/upload', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_upload():
     username = session['username']
 
@@ -603,7 +603,7 @@ def api_my_upload():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/upload-flist', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_upload_flist():
     username = session['username']
 
@@ -619,7 +619,7 @@ def api_my_upload_flist():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/merge/<target>', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_merge(target):
     username = session['username']
 
@@ -638,7 +638,7 @@ def api_my_merge(target):
     return api_response()
 
 @app.route('/api/flist/me/docker', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_docker():
     username = session['username']
 
