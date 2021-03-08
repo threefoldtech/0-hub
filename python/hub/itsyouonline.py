@@ -4,7 +4,7 @@ import uuid
 import requests
 import json
 from jose import jwt
-from flask import current_app, redirect, request, session, flash
+from flask import current_app, redirect, request, session, flash, jsonify
 from functools import wraps
 from urllib.parse import urlencode
 
@@ -84,11 +84,8 @@ def _extract_accounts(username, scopes):
 
     return accounts
 
-def requires_auth():
+def force_login():
     def decorator(handler):
-        """
-        Wraps route handler to be only accessible after authentication via Itsyou.Online
-        """
         @wraps(handler)
         def _wrapper(*args, **kwargs):
             if not current_app.config['authentication']:
@@ -103,57 +100,13 @@ def requires_auth():
 
                 return handler(*args, **kwargs)
 
-            config = current_app.config["iyo_config"]
             scopes = []
 
+            config = current_app.config["iyo_config"]
             if config["scope"]:
                 scopes.append(config['scope'])
 
             scope = ','.join(scopes)
-            jwt_string = None
-
-            # first check for Authorizaton method
-            header = request.headers.get("Authorization")
-            if header:
-                match = JWT_AUTH_HEADER.match(header)
-                if match:
-                    jwt_string = match.group(1)
-
-            # then, fallback to old caddy behavior
-            if not jwt_string:
-                jwt_string = request.cookies.get("caddyoauth")
-
-            # checking jwt provided (if any set)
-            if jwt_string:
-                try:
-                    jwt_info = jwt.decode(jwt_string, ITSYOUONLINE_KEY)
-                    jwt_scope = jwt_info["scope"]
-                    username = jwt_info["username"]
-
-                except:
-                    if jwt_string != current_app.config['iyo_config']['guest']:
-                        return json.dumps({"status": "error", "message": "invalid token"}) + "\n", 403
-
-                    print("[+] guest token requested")
-
-                    username = 'guest'
-                    jwt_info = {
-                        'username': username,
-                        'scope': []
-                    }
-
-                session["_iyo_authenticated"] = time.time()
-                session["iyo_jwt"] = jwt_string
-                session['username'] = username
-                session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
-
-                # check again for user-switch flag
-                if request.cookies.get("active-user") in session['accounts']:
-                    print("[+] using special user: %s" % request.cookies.get('active-user'))
-                    session['username'] = request.cookies.get('active-user')
-
-                return handler(*args, **kwargs)
-
             state = str(uuid.uuid4())
             session["_iyo_state"] = state
             session["_iyo_auth_complete_uri"] = request.full_path
@@ -173,6 +126,71 @@ def requires_auth():
         return _wrapper
     return decorator
 
+def authenticate(*args, **kwargs):
+    if not current_app.config['authentication']:
+        session['accounts'] = ['Administrator']
+        session['username'] = 'Administrator'
+        return None, 200
+
+    if session.get("_iyo_authenticated"):
+        if request.cookies.get("active-user") in session['accounts']:
+            print("[+] using special user: %s" % request.cookies.get('active-user'))
+            session['username'] = request.cookies.get('active-user')
+
+        return None, 200
+
+    config = current_app.config["iyo_config"]
+    scopes = []
+
+    if config["scope"]:
+        scopes.append(config['scope'])
+
+    scope = ','.join(scopes)
+    jwt_string = None
+
+    # first check for Authorizaton method
+    header = request.headers.get("Authorization")
+    if header:
+        match = JWT_AUTH_HEADER.match(header)
+        if match:
+            jwt_string = match.group(1)
+
+    # then, fallback to old caddy behavior
+    if not jwt_string:
+        jwt_string = request.cookies.get("caddyoauth")
+
+    # checking jwt provided (if any set)
+    if jwt_string:
+        try:
+            jwt_info = jwt.decode(jwt_string, ITSYOUONLINE_KEY)
+            jwt_scope = jwt_info["scope"]
+            username = jwt_info["username"]
+
+        except:
+            if jwt_string != current_app.config['iyo_config']['guest']:
+                return jsonify({"status": "error", "message": "invalid token"}), 403
+
+            print("[+] guest token requested")
+
+            username = 'guest'
+            jwt_info = {
+                'username': username,
+                'scope': []
+            }
+
+        session["_iyo_authenticated"] = time.time()
+        session["iyo_jwt"] = jwt_string
+        session['username'] = username
+        session['accounts'] = _extract_accounts(jwt_info['username'], jwt_info['scope'])
+
+        # check again for user-switch flag
+        if request.cookies.get("active-user") in session['accounts']:
+            print("[+] using special user: %s" % request.cookies.get('active-user'))
+            session['username'] = request.cookies.get('active-user')
+
+        return None, 200
+
+    return jsonify({"status": "error", "message": "could not authenticate"}), 401
 
 def _callback():
     code = request.args.get("code")

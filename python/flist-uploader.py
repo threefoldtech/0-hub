@@ -79,7 +79,7 @@ if config['authentication']:
         '/_iyo_callback', None, True, True, 'organization', config['guest-token']
     )
 
-    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'])
+    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'], config['threebot-seed'])
 
 else:
     hub.itsyouonline.disabled(app)
@@ -231,9 +231,17 @@ def login_method():
     return internalRedirect("logins.html")
 
 @app.route('/login-iyo')
-@hub.itsyouonline.requires_auth()
+@hub.itsyouonline.force_login()
 def login_iyo():
     return internalRedirect("users.html")
+
+@app.route('/showtoken')
+def show_token():
+    token = request.args.get("key", None)
+    if token == None:
+        return abort(404)
+
+    return globalTemplate("token.html", {'token': token, "url": config['public-website']})
 
 @app.route('/upload', methods=['GET', 'POST'])
 @hub.security.protected()
