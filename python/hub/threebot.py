@@ -53,7 +53,7 @@ class ThreeBotAuthenticator:
         print(token)
 
         try:
-            signed = self.signkey.verify_key.verify(token, None, nacl.encoding.Base64Encoder)
+            signed = self.signkey.verify_key.verify(token, None, nacl.encoding.URLSafeBase64Encoder)
             print(signed)
 
         except:
@@ -167,7 +167,7 @@ class ThreeBotAuthenticator:
             payload = [message, int(time.time())]
 
             bpayload = json.dumps(payload).encode()
-            signed = self.signkey.sign(bpayload, nacl.encoding.Base64Encoder)
+            signed = self.signkey.sign(bpayload, nacl.encoding.URLSafeBase64Encoder)
             hexsign = signed.decode('utf-8')
 
             return redirect("/token/%s" % hexsign, code=302)
