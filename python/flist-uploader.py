@@ -235,12 +235,8 @@ def login_method():
 def login_iyo():
     return internalRedirect("users.html")
 
-@app.route('/showtoken')
-def show_token():
-    token = request.args.get("key", None)
-    if token == None:
-        return abort(404)
-
+@app.route('/token/<token>')
+def show_token(token):
     return globalTemplate("token.html", {'token': token, "url": config['public-website']})
 
 @app.route('/upload', methods=['GET', 'POST'])

@@ -170,7 +170,7 @@ class ThreeBotAuthenticator:
             signed = self.signkey.sign(bpayload, nacl.encoding.Base64Encoder)
             hexsign = signed.decode('utf-8')
 
-            return redirect("/showtoken?key=%s" % hexsign, code=302)
+            return redirect("/token/%s" % hexsign, code=302)
 
         @self.app.route('/login')
         def login():
