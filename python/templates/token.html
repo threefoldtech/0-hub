@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}Zero-OS Hub{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>API Token</h1>
+        <p>Your API Token is ready.</p>
+        <p>To submit API call, just use <code>Authorization: bearer [token]</code> when
+        sending requests.</p>
+        <pre>{{ token }}</pre>
+
+        <p>Here is <code>curl</code> example you can use to ensure your token is valid:</p>
+        <pre>curl -H "Authorization: bearer {{ token }}" {{ url }}/api/flist/me</pre>
+    </div>
+</div>
+{% endblock %}

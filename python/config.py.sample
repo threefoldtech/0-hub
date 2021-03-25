@@ -118,8 +118,18 @@ config = {
     ##
     ## You also need to provide the appid, which is the host where
     ## the hub is hosted (which should be the same as public-website value
+    ##
+    ## In order to get API calls working, you need to specify a 32 bytes seed
+    ## used to produce signed tokens users can use to authenticate themself
+    ## on API requests. This 32 seed needs to remain private.
+    ##
+    ## You can generate the seed using python NaCl:
+    ##   import nacl
+    ##   from nacl import utils
+    ##   nacl.utils.random(32)
     'threebot-privatekey': '',
     'threebot-appid': 'hub.tld',
+    'threebot-seed': b'',
 
     ## When using authentication, there is also possible to hard code
     ## a 'guest' token, this token will be matched like an itsyou.online

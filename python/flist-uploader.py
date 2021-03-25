@@ -11,7 +11,6 @@ from stat import *
 from flask import Flask, Response, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
-# from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.wrappers import Request
 from config import config
 from hub.flist import HubPublicFlist, HubFlist
@@ -67,7 +66,6 @@ if not hc.check():
 # initialize flask application
 #
 app = Flask(__name__)
-# app.wsgi_app = hub.itsyouonline.ItsYouChecker(app.wsgi_app)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.url_map.strict_slashes = False
 app.secret_key = os.urandom(24)
@@ -81,7 +79,7 @@ if config['authentication']:
         '/_iyo_callback', None, True, True, 'organization', config['guest-token']
     )
 
-    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'])
+    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'], config['threebot-seed'])
 
 else:
     hub.itsyouonline.disabled(app)
@@ -233,9 +231,13 @@ def login_method():
     return internalRedirect("logins.html")
 
 @app.route('/login-iyo')
-@hub.itsyouonline.requires_auth()
+@hub.itsyouonline.force_login()
 def login_iyo():
     return internalRedirect("users.html")
+
+@app.route('/token/<token>')
+def show_token(token):
+    return globalTemplate("token.html", {'token': token, "url": config['public-website']})
 
 @app.route('/upload', methods=['GET', 'POST'])
 @hub.security.protected()
@@ -525,7 +527,7 @@ def api_readme(username, flist):
     return response
 
 @app.route('/api/flist/me', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_myself():
     username = session['username']
 
@@ -533,7 +535,7 @@ def api_my_myself():
 
 
 @app.route('/api/flist/me/<flist>', methods=['GET', 'DELETE'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_inspect(flist):
     username = session['username']
 
@@ -543,21 +545,21 @@ def api_my_inspect(flist):
     return api_inspect(username, flist)
 
 @app.route('/api/flist/me/<source>/link/<linkname>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_symlink(source, linkname):
     username = session['username']
 
     return api_symlink(username, source, linkname)
 
 @app.route('/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_crosssymlink(linkname, repository, sourcename):
     username = session['username']
 
     return api_cross_symlink(username, repository, sourcename, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_rename(source, destination):
     username = session['username']
     flist = HubPublicFlist(config, username, source)
@@ -574,14 +576,14 @@ def api_my_rename(source, destination):
     return api_response()
 
 @app.route('/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>', methods=['GET'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_promote(sourcerepo, sourcefile, localname):
     username = session['username']
 
     return api_promote(username, sourcerepo, sourcefile, localname)
 
 @app.route('/api/flist/me/upload', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_upload():
     username = session['username']
 
@@ -597,7 +599,7 @@ def api_my_upload():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/upload-flist', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_upload_flist():
     username = session['username']
 
@@ -613,7 +615,7 @@ def api_my_upload_flist():
         return api_response(response['message'], 500)
 
 @app.route('/api/flist/me/merge/<target>', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_merge(target):
     username = session['username']
 
@@ -632,7 +634,7 @@ def api_my_merge(target):
     return api_response()
 
 @app.route('/api/flist/me/docker', methods=['POST'])
-@hub.itsyouonline.requires_auth()
+@hub.security.apicall()
 def api_my_docker():
     username = session['username']
 
