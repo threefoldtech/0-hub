@@ -907,11 +907,13 @@ def api_user_contents(username, userpath):
 
         if S_ISLNK(stat.st_mode):
             target = os.readlink(filepath)
+            tstat = os.stat(filepath)
 
             contents.append({
                 'name': file,
                 'size': "--",
-                'updated': int(stat.st_mtime),
+                'updated': int(tstat.st_mtime),
+                'linktime': int(stat.st_mtime),
                 'type': 'symlink',
                 'target': clean_symlink(target),
             })
@@ -965,10 +967,13 @@ def api_flist_info(flist):
 
     if S_ISLNK(stat.st_mode):
         target = os.readlink(flist.target)
+        tstat = os.stat(flist.target)
 
         contents['type'] = 'symlink'
+        contents['updated'] = int(tstat.st_mtime),
+        contents['linktime'] = int(stat.st_mtime),
         contents['target'] = target
-        contents['size'] = 0
+        contents['size'] = tstat.st_size
 
     return contents
 
