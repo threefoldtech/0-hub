@@ -911,7 +911,7 @@ def api_user_contents(username, userpath):
 
             contents.append({
                 'name': file,
-                'size': "--",
+                'size': "%.2f KB" % ((tstat.st_size) / 1024),
                 'updated': int(tstat.st_mtime),
                 'linktime': int(stat.st_mtime),
                 'type': 'symlink',
