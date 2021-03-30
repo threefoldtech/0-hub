@@ -970,8 +970,8 @@ def api_flist_info(flist):
         tstat = os.stat(flist.target)
 
         contents['type'] = 'symlink'
-        contents['updated'] = int(tstat.st_mtime),
-        contents['linktime'] = int(stat.st_mtime),
+        contents['updated'] = int(tstat.st_mtime)
+        contents['linktime'] = int(stat.st_mtime)
         contents['target'] = target
         contents['size'] = tstat.st_size
 
