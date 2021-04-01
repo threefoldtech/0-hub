@@ -907,7 +907,10 @@ def api_user_contents(username, userpath):
 
         if S_ISLNK(stat.st_mode):
             target = os.readlink(filepath)
-            tstat = os.stat(filepath)
+            tstat = target
+
+            if os.path.exists(filepath):
+                tstat = os.stat(filepath)
 
             contents.append({
                 'name': file,
@@ -967,7 +970,10 @@ def api_flist_info(flist):
 
     if S_ISLNK(stat.st_mode):
         target = os.readlink(flist.target)
-        tstat = os.stat(flist.target)
+        tstat = target
+
+        if os.path.exists(flist.target):
+            tstat = os.stat(flist.target)
 
         contents['type'] = 'symlink'
         contents['updated'] = int(tstat.st_mtime)
