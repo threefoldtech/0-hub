@@ -907,7 +907,7 @@ def api_user_contents(username, userpath):
 
         if S_ISLNK(stat.st_mode):
             target = os.readlink(filepath)
-            tstat = target
+            tstat = stat
 
             if os.path.exists(filepath):
                 tstat = os.stat(filepath)
@@ -970,7 +970,7 @@ def api_flist_info(flist):
 
     if S_ISLNK(stat.st_mode):
         target = os.readlink(flist.target)
-        tstat = target
+        tstat = stat
 
         if os.path.exists(flist.target):
             tstat = os.stat(flist.target)
