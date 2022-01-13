@@ -365,7 +365,6 @@ def show_flist_txt(username, flist):
 
     response = make_response(text)
     response.headers["Content-Type"] = "text/plain"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -385,7 +384,6 @@ def show_flist_json(username, flist):
 
     response = make_response(json.dumps(data) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -404,7 +402,6 @@ def checksum_flist(username, flist):
 
     response = make_response(hash + "\n")
     response.headers["Content-Type"] = "text/plain"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -440,7 +437,6 @@ def api_list():
 
     response = make_response(json.dumps(output) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -450,7 +446,6 @@ def api_list_files():
 
     response = make_response(json.dumps(fileslist) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -460,7 +455,6 @@ def api_list_repositories():
 
     response = make_response(json.dumps(repositories) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -474,7 +468,6 @@ def api_user_contents(username):
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -496,7 +489,6 @@ def api_inspect(username, flist):
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -514,7 +506,6 @@ def api_inspect_light(username, flist):
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -532,7 +523,6 @@ def api_readme(username, flist):
 
     response = make_response(json.dumps(readme) + "\n")
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
@@ -1004,10 +994,16 @@ def api_response(error=None, code=200, extra=None):
 
     response = make_response(json.dumps(reply) + "\n", code)
     response.headers["Content-Type"] = "application/json"
-    response.headers["Access-Control-Allow-Origin"] = "*"
 
     return response
 
+#
+# request post hook
+#
+@app.after_request
+def cors_global(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 #
 # notification subsystem (server-sent event)
