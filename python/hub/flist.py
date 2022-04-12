@@ -87,8 +87,16 @@ class HubFlist:
                 break
 
             value = output.strip()
-            content = json.loads(value.decode('utf-8'))
-            # print(content)
+            try:
+                content = json.loads(value.decode('utf-8'))
+                # print(content)
+
+            except Exception as e:
+                print(e)
+
+                # print zflist output to debug and forward error
+                print(value.decode('utf-8'))
+                raise e
 
             if 'status' in content and content['status'] == 'progress':
                 # only parse processing message
