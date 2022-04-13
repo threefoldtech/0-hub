@@ -134,7 +134,8 @@ class ThreeBotAuthenticator:
             'appid': self.appid,
             'publickey': self.pubkey,
             'state': state,
-            'redirecturl': callback
+            'redirecturl': callback,
+            'scope': {},
         }
 
         result = urllib.parse.urlencode(payload, quote_via=urllib.parse.quote_plus)
