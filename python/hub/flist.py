@@ -93,6 +93,12 @@ class HubFlist:
 
             except Exception as e:
                 print(e)
+                print(value)
+                print(len(value))
+                print(type(value))
+
+                if len(value) == 0:
+                    continue
 
                 # print zflist output to debug and forward error
                 print(value.decode('utf-8'))
