@@ -194,7 +194,7 @@ class HubFlist:
         """
         Compute md5 hash of the flist
         """
-        print("[+] md5: %s" % target)
+        # print("[+] md5: %s" % target)
 
         hash_md5 = hashlib.md5()
 
@@ -356,7 +356,7 @@ class HubPublicFlist:
 
     @property
     def file_exists(self):
-        print("[+] flist exists: %s" % self.target)
+        # print("[+] flist exists: %s" % self.target)
         return (os.path.isfile(self.target) or os.path.islink(self.target))
 
     @property
