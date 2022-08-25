@@ -30,6 +30,7 @@ class HubFlist:
         self.opened = False
         self.jobid = str(uuid.uuid4())
         self.announcer = announcer
+        self.metaprotect = ["readme", "backend", "entrypoint", "environ", "port", "volume"]
 
         self.environ = dict(
             os.environ,
@@ -184,12 +185,20 @@ class HubFlist:
             if os.path.exists(fp):
                 self.setreadme(fp)
 
-    def create(self, rootdir, target):
+    def create(self, rootdir, target, metadata={}):
         self.execute("init")
         putdir = self.execute("putdir", [rootdir, "/"])
 
         # include optional readme
         self.readme(rootdir)
+
+        for meta in metadata:
+            # ignore protected metadata
+            if meta in self.metaprotect:
+                continue
+
+            # FIXME: is this protected against injection
+            self.execute("metadata", [meta, metadata[meta]])
 
         self.execute("commit", [target])
         self.execute("close")
@@ -237,6 +246,14 @@ class HubFlist:
         found = self.execute("stat", [filename])
         return found['success']
 
+    def metadatalist(self):
+        payload = self.execute("metadata", [])
+
+        if not payload["success"]:
+            return None
+
+        return payload["response"]
+
     def metadata(self, metadata):
         payload = self.execute("metadata", [metadata])
 
@@ -250,10 +267,10 @@ class HubFlist:
         if not self.opened:
             self.open()
 
+        mdlist = self.metadatalist()
         data = {}
-        entries = ["readme", "backend", "entrypoint", "environ", "port", "volume"]
 
-        for entry in entries:
+        for entry in mdlist:
             data[entry] = self.metadata(entry)
 
         self.close()

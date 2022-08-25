@@ -774,6 +774,15 @@ def api_flist_upload(request, username, validate=False):
     if not allowed_file(file.filename, validate):
         return {'status': 'error', 'message': 'this file is not allowed'}
 
+    metadata = {}
+
+    for field in request.form:
+        if field.startswith("metadata-"):
+            key = field[9:]
+
+            print("[+] metadata requested: %s" % key)
+            metadata[key] = request.form[field]
+
     #
     # processing the file
     #
@@ -791,7 +800,7 @@ def api_flist_upload(request, username, validate=False):
     if not validate:
         workspace = flist.raw.workspace()
         flist.raw.unpack(source, workspace.name)
-        stats = flist.raw.create(workspace.name, flist.target)
+        stats = flist.raw.create(workspace.name, flist.target, metadata)
 
     # we have an existing flist and checking contents
     # we don't need to create the flist, we just ensure the
