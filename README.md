@@ -94,13 +94,19 @@ See example below.
   - The resulting conversion will stay on your repository
 
 ### Example
+Simple example how to upload to the hub in command line. Your token can be generated on the website.
+```bash
+curl -H "Authorization: bearer ...token..." -X POST -F file=@my-local-archive.tar.gz \
+    https://hub.grid.tf/api/flist/me/upload
+```
+
 Simple example how to use all feature to do some flist promotion. In this case, let assume:
 - The real user is `user1`
 - This user have `member-of` field for `userX` in his jwt
 - This user want to promote `user2/my-app-0.1.0` flist to `userX/official-app-0.1.0`
 
-```
-curl -b "active-user=userX;" -H "Authorization: bearer ...jwt..." \
+```bash
+curl -b "active-user=userX;" -H "Authorization: bearer ...token..." \
     "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
