@@ -46,10 +46,18 @@
                 </div>
             </div>
 
-            <h2>Readme</h2>
+            <h2>Metadata</h2>
+            <div class="form-group" id="metadata-list">
+            </div>
+
+            <button type="button" id="metadata-btn" class="btn btn-primary" onclick="return metadata_list();">Load Metadata</button>
+
+
+            <!--
             <article class="markdown-body" id="flist-readme">
                 <a class="initial" href="#" onclick="return readme();">Load the readme</a>
             </article>
+            -->
 
             <h2>Contents</h2>
             <pre id="flist-contents"><a href="#" onclick="return contents();">Show the contents</a></pre>
@@ -58,6 +66,7 @@
 </div>
 
 <script>
+/*
 function readme() {
     $("#flist-readme").html("Loading...");
 
@@ -72,6 +81,7 @@ function readme() {
 
     return false;
 }
+*/
 
 function contents() {
     $("#flist-contents").html("Loading...");
@@ -88,6 +98,34 @@ function contents() {
             contents.push(data['content'][index]["path"]);
 
         $("#flist-contents").html(header + contents.join("\n"));
+    });
+
+    return false;
+}
+
+function metadata_list() {
+    $("#metadata-btn").html("Loading, please wait").prop("disabled", true);
+
+    $.get('/api/flist/{{ targetuser }}/{{ flistname }}/metadata', function(data) {
+        $("#metadata-btn").remove();
+
+        for(var name in data) {
+            let meta = $("<div>", {"class": "input-group meta-box"});
+            let value = data[name];
+
+            meta.append($('<code>', {"class": "input-group-addon text-capitalize meta-head"}).html(name));
+
+            if(name == "readme") {
+                // meta.append($('<article>', {"class": "form-control"}).html(marked(value['readme'])));
+                meta.append($('<article>', {"class": "form-control"}).html(value['readme']));
+
+            } else {
+                let clean = value.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                meta.append($('<pre>', {"class": "form-control meta"}).html(clean));
+            }
+
+            $("#metadata-list").append(meta);
+        }
     });
 
     return false;
