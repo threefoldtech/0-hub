@@ -93,3 +93,17 @@ article.markdown-body a.initial {
 .input-info {
     font-family: monospace;
 }
+
+.meta-head {
+    width: 100px;
+    display: block;
+    background-color: #d9edf7 !important;
+}
+
+.meta-box {
+    margin-bottom: 12px;
+}
+
+pre.meta {
+    height: auto;
+}
