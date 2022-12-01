@@ -86,7 +86,7 @@ class HubFlist:
                 code = p.poll()
                 break
 
-            value = output.strip()
+            value += output.strip()
             try:
                 content = json.loads(value.decode('utf-8'))
                 # print(content)
