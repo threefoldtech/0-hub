@@ -105,6 +105,9 @@ class HubFlist:
                 raise e
 
             if 'status' in content and content['status'] == 'progress':
+                # reset value to process one line at a time
+                value = b''
+
                 # only parse processing message
                 if content['message'] != 'processing':
                     continue
