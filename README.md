@@ -104,16 +104,19 @@ curl -b "active-user=userX;" -H "Authorization: bearer ...jwt..." \
     "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
-### Client
-There is a python client which can be found on the [client](client) directory.
-This make all of this more easy.
-
 # Backend
 Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db).
 You need both of them working before getting a working hub.
 
-# Documentation
-For full documentation, see the [`/docs`](/docs) directory.
+# Installation
+In order to deploy your own hub, you need a working `0-flist` binary. You can see in `deployment/deploy.sh` script how to compile it.
+Alternatively, you can just download a precompiled version from [0-flist release](https://github.com/threefoldtech/0-flist/releases) page.
+
+Copy the `src/config.py.sample` file to `src/config.py`, the file itself is well documented, then you can start the server:
+```sh
+cd src
+python flist-uploader.py
+```
 
 # Repository Owner
 - [Maxime Daniel](https://github.com/maxux), Telegram: [@maxux](http://t.me/maxux)
