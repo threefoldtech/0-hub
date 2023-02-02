@@ -90,4 +90,5 @@ ENV/
 
 # Hub Resources
 public/users
+src/config.py
 workdir
