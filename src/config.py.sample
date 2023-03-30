@@ -2,12 +2,15 @@
 # You should adapt this part to your usage
 #
 config = {
-    ## 0-db internal endpoint (host, port, optional password)
-    ## Please note, the default namespace is always used
+    ## 0-db internal endpoint (host, port, optional password, namespace)
     ##
-    ## For security reason, you should run your 0-db in protected
-    ## mode (--protect) with an admin password. This enable your to
-    ## get a 0-db with write access protected and public read access.
+    ## If using default namespace, for security reason, you should
+    ## run your 0-db in protected mode (--protect) with an admin password.
+    ## This enable your to get a 0-db with write access protected 
+    ## and public read access.
+    ##
+    ## Otherwise you should use a namespace password protected but public
+    ## (read-only without authentication and password required to write)
     ##
     ## If you don't set any password and don't run 0-db in protected
     ## mode, anybody can delete/change 0-db contents.
@@ -16,6 +19,7 @@ config = {
     'backend-internal-host': "my-zdb-host",
     'backend-internal-port': 9900,
     'backend-internal-pass': '',
+    'backend-internal-name': 'default',
 
     ## 0-db public endpoint (host, port), this will be used
     ## to provide user information how to reach the backend
