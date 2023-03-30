@@ -169,7 +169,8 @@ class HubFlist:
     def validate(self):
         valbackend = [
             "--host", self.config['backend-internal-host'],
-            "--port", str(self.config['backend-internal-port'])
+            "--port", str(self.config['backend-internal-port']),
+            "--namespace", self.config['backend-internal-name']
         ]
 
         self.open()
@@ -267,15 +268,17 @@ class HubFlist:
     def localbackend(self, password=False):
         host = self.config['backend-public-host']
         port = self.config['backend-public-port']
+        name = self.config['backend-public-name']
 
-        self.execute("metadata", ["backend", "--host", host, "--port", str(port)])
+        self.execute("metadata", ["backend", "--host", host, "--port", str(port), "--namespace", name])
 
     def privatebackend(self, password=False):
         host = self.config['backend-internal-host']
         port = self.config['backend-internal-port']
         pwd = self.config['backend-internal-pass']
+        name = self.config['backend-internal-name']
 
-        self.execute("metadata", ["backend", "--host", host, "--port", str(port), '--password', pwd])
+        self.execute("metadata", ["backend", "--host", host, "--port", str(port), '--password', pwd, "--namespace", name])
 
     def setreadme(self, filename):
         self.execute("metadata", ["readme", "--import", filename])

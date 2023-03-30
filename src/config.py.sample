@@ -28,6 +28,7 @@ config = {
     ## on the frontend but are not used for creation
     'backend-public-host': "hub.tld",
     'backend-public-port': 9900,
+    'backend-public-name': "default",
 
     ## Hub public reachable url
     ## this will be used to provide user an working url
