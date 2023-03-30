@@ -21,6 +21,7 @@ class HubFlist:
             'host': config['backend-internal-host'],
             'port': config['backend-internal-port'],
             'password': config['backend-internal-pass'],
+            'namespace': config['backend-internal-name'],
         })
 
         self.tmpdir = None
