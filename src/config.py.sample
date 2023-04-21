@@ -132,6 +132,9 @@ config = {
     ##   import nacl
     ##   from nacl import utils
     ##   nacl.utils.random(32)
+    ##
+    ## Or the one-liner:
+    ##   python -c "import nacl; from nacl import utils; print(nacl.utils.random(32))"
     'threebot-privatekey': '',
     'threebot-appid': 'hub.tld',
     'threebot-seed': b'',
