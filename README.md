@@ -124,5 +124,14 @@ cd src
 python flist-uploader.py
 ```
 
+# Dependencies
+
+To run latest hub, you need Flask >2.0. We recommend using Ubuntu 22.04.
+
+```
+apt-get install python3-flask python3-requests python3-jose python3-nacl \
+    python3-redis python3-docker python3-pytoml
+```
+
 # Repository Owner
 - [Maxime Daniel](https://github.com/maxux), Telegram: [@maxux](http://t.me/maxux)
