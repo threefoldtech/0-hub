@@ -395,7 +395,6 @@ def show_flist_json(username, flist):
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
     flist = HubPublicFlist(config, username, flist)
-    print(flask.__version__)
     return send_from_directory(directory=flist.user_path, filename=flist.filename)
 
 @app.route('/<username>/<flist>.flist.md5')
