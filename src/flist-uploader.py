@@ -9,6 +9,7 @@ import hub.threebot
 import hub.security
 from stat import *
 from flask import Flask, Response, request, redirect, url_for, render_template, abort, make_response, send_from_directory, session
+from datetime import datetime
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers import Request
@@ -221,6 +222,10 @@ def flist_merge_data(sources, target):
 # ROUTING ACTIONS
 #
 ######################################
+@app.context_processor
+def inject_now():
+    return {'now': datetime.utcnow()}
+
 @app.route('/logout')
 def logout():
     hub.security.invalidate()
