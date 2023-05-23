@@ -113,7 +113,7 @@ class ThreeBotAuthenticator:
 
         values = json.loads(response.decode('utf-8'))
 
-        if values.get("email") is not None:
+        if values.get("email") != None:
             if values['email']['verified'] == None:
                 return 'Email unverified, access denied.', 400
 
@@ -147,7 +147,7 @@ class ThreeBotAuthenticator:
         def callback_login():
             message, code = self.authorize()
 
-            if code is not 200:
+            if code != 200:
                 return message, code
 
             username = message
@@ -162,7 +162,7 @@ class ThreeBotAuthenticator:
         def callback_token():
             message, code = self.authorize()
 
-            if code is not 200:
+            if code != 200:
                 return message, code
 
             payload = [message, int(time.time())]
