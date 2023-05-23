@@ -26,16 +26,6 @@
                 </div>
             </div>
 
-            <h3>Storage Address</h3>
-            <div class="form-group">
-                <div class="input-group">
-                    <input type="text" class="input-info form-control" id="storage-url" value="{{ ardbhost }}" readonly>
-                    <div class="input-group-btn">
-                        <button type="button" class="btn btn-primary btn-block" onclick="clipboard('#storage-url');">Copy</button>
-                    </div>
-                </div>
-            </div>
-
             <h3>Archive Checksum (MD5)</h3>
             <div class="form-group">
                 <div class="input-group">
@@ -51,13 +41,6 @@
             </div>
 
             <button type="button" id="metadata-btn" class="btn btn-primary" onclick="return metadata_list();">Load Metadata</button>
-
-
-            <!--
-            <article class="markdown-body" id="flist-readme">
-                <a class="initial" href="#" onclick="return readme();">Load the readme</a>
-            </article>
-            -->
 
             <h2>Contents</h2>
             <pre id="flist-contents"><a href="#" onclick="return contents();">Show the contents</a></pre>
@@ -113,11 +96,24 @@ function metadata_list() {
             let meta = $("<div>", {"class": "input-group meta-box"});
             let value = data[name];
 
-            meta.append($('<code>', {"class": "input-group-addon text-capitalize meta-head"}).html(name));
+            var cname = name;
+            if(cname == "backend-forced")
+                cname = "Backend (default)";
+
+            meta.append($('<code>', {"class": "input-group-addon text-capitalize meta-head"}).html(cname));
 
             if(name == "readme") {
                 // meta.append($('<article>', {"class": "form-control"}).html(marked(value['readme'])));
-                meta.append($('<article>', {"class": "form-control"}).html(value['readme']));
+                // meta.append($('<pre>', {"class": "form-control"}).html(value['readme']));
+                let clean = value['readme'].replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                meta.append($('<pre>', {"class": "form-control meta"}).html(clean));
+
+            } else if(name == "backend" || name == "backend-forced") {
+                var clean = "zdb://" + value['host'] + ":" + value["port"];
+                if(value['namespace'])
+                    clean += "/" + value['namespace'];
+
+                meta.append($('<pre>', {"class": "form-control meta"}).html(clean));
 
             } else {
                 let clean = value.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -130,5 +126,7 @@ function metadata_list() {
 
     return false;
 }
+
+$(document).ready(metadata_list);
 </script>
 {% endblock %}

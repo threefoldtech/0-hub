@@ -258,7 +258,7 @@ class HubFlist:
         payload = self.execute("metadata", [])
 
         if not payload["success"]:
-            return None
+            return []
 
         return payload["response"]
 
@@ -281,14 +281,29 @@ class HubFlist:
         for entry in mdlist:
             data[entry] = self.metadata(entry)
 
+        # force local backend
+        if "backend" not in mdlist:
+            data["backend-forced"] = self.localbackend_info()
+
         self.close()
 
         return data
 
+    def localbackend_info(self):
+        info = {
+            "host": self.config['backend-public-host'],
+            "port": self.config['backend-public-port'],
+            "namespace": self.config['backend-public-name']
+        }
+
+        return info
+
     def localbackend(self, password=False):
-        host = self.config['backend-public-host']
-        port = self.config['backend-public-port']
-        name = self.config['backend-public-name']
+        info = self.localbackend_info()
+
+        host = info["host"]
+        port = info["port"]
+        name = info["namespace"]
 
         self.execute("metadata", ["backend", "--host", host, "--port", str(port), "--namespace", name])
 
