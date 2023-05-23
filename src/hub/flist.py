@@ -205,6 +205,9 @@ class HubFlist:
             # FIXME: is this protected against injection
             self.execute("metadata", [meta, metadata[meta]])
 
+        # force local backend
+        self.localbackend()
+
         self.execute("commit", [target])
         self.execute("close")
 
