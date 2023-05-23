@@ -395,7 +395,7 @@ def show_flist_json(username, flist):
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
     flist = HubPublicFlist(config, username, flist)
-    return send_from_directory(directory=flist.user_path, path=flist.filename, filename=flist.filename)
+    return send_from_directory(directory=flist.user_path, filename=flist.filename)
 
 @app.route('/<username>/<flist>.flist.md5')
 def checksum_flist(username, flist):
