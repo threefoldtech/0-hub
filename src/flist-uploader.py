@@ -216,6 +216,14 @@ def flist_merge_data(sources, target):
 
     return data
 
+# tags helper
+def tag(name):
+    return ".tag-" + name
+
+def utag(username, tagname):
+    return username + "/" + tag(tagname)
+
+
 
 ######################################
 #
@@ -346,7 +354,7 @@ def show_user_tags(username, tag):
     if not flist.user_exists:
         abort(404)
 
-    if not os.path.exists(flist.user_path + "/.tag-" + tag):
+    if not os.path.exists(utag(flist.user_path, tag)):
         abort(404)
 
     return globalTemplate("tags.html", {'targetuser': username, "targettag": tag})
@@ -407,6 +415,11 @@ def show_flist_json(username, flist):
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
     flist = HubPublicFlist(config, username, flist)
+    return send_from_directory(directory=flist.user_path, path=flist.filename)
+
+@app.route('/<username>/tags/<tagname>/<flist>.flist')
+def download_flist_tag(username, tagname, flist):
+    flist = HubPublicFlist(config, utag(username, tagname), flist)
     return send_from_directory(directory=flist.user_path, path=flist.filename)
 
 @app.route('/<username>/<flist>.flist.md5')
@@ -591,6 +604,13 @@ def api_my_crosssymlink(linkname, repository, sourcename):
 
     return api_cross_symlink(username, repository, sourcename, linkname)
 
+@app.route('/api/flist/me/<tagname>/<linkname>/tag/<repository>/<sourcename>', methods=['GET'])
+@hub.security.apicall()
+def api_my_tag_add(tagname, linkname, repository, sourcename):
+    username = session['username']
+
+    return api_tag_symlink(username, repository, sourcename, tagname, linkname)
+
 @app.route('/api/flist/me/<source>/rename/<destination>')
 @hub.security.apicall()
 def api_my_rename(source, destination):
@@ -757,6 +777,32 @@ def api_cross_symlink(username, repository, sourcename, linkname):
     os.chdir(cwd)
 
     return api_response()
+
+def api_tag_symlink(username, repository, sourcename, tagname, linkname):
+    flist = HubPublicFlist(config, repository, sourcename)
+    linkflist = HubPublicFlist(config, username + "/" + tag(tagname), linkname)
+
+    if not flist.user_exists:
+        return api_response("source repository not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    if not os.path.exists(linkflist.user_path):
+        os.mkdir(linkflist.user_path)
+
+    # remove previous symlink if existing
+    if os.path.islink(linkflist.target):
+        os.unlink(linkflist.target)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.symlink("../../" + flist.username + "/" + flist.filename, linkflist.filename)
+    os.chdir(cwd)
+
+    return api_response()
+
 
 def api_promote(username, sourcerepo, sourcefile, targetname):
     flist = HubPublicFlist(config, sourcerepo, sourcefile)

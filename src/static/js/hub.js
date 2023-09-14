@@ -28,9 +28,15 @@ function flists_file(file, username) {
     var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
     var seeicon = $('<span>', {'class': 'glyphicon glyphicon-eye-open'});
 
-    var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
+    if(tagname) {
+        var filelink = $('<a>', {'href': '/' + username + '/tags/' + tagname + '/' + file['name']}).html(file['name']);
+        output['seelink'] = $('<a>', {'href': '/' + username + '/tags/' + tagname + '/' + file['name'] + '.md'}).append(seeicon);
 
-    output['seelink'] = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+    } else {
+        var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
+        output['seelink'] = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+    }
+
     output['filetd'] = $('<td>').append(fileicon).append(filelink);
 
     if(file['type'] == 'symlink') {
