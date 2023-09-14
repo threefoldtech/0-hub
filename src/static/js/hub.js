@@ -19,39 +19,82 @@ function repositories(source) {
     $(window).scrollTop(sessionStorage.getItem('scrollTop') || 0);
 }
 
+function flists_file(file, username) {
+    var output = {
+        'size': file['size'],
+        'updated': file['updated'],
+    };
+
+    var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
+    var seeicon = $('<span>', {'class': 'glyphicon glyphicon-eye-open'});
+
+    var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
+
+    output['seelink'] = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+    output['filetd'] = $('<td>').append(fileicon).append(filelink);
+
+    if(file['type'] == 'symlink') {
+        var localusername = username + '/';
+
+        // cross repository symlink
+        if(file['target'].includes('/'))
+            localusername = '/';
+
+        var link = localusername + file['target'];
+        if(!file['target'].includes('/tags/'))
+            link += '.md';
+
+        output['filetd'].append($('<span>').html(" ➔ "));
+        output['filetd'].append($('<a>', {'href': link}).html(file['target']));
+    }
+
+    return output
+}
+
+function flists_tag(file, username) {
+    var output = {
+        'updated': file['updated'],
+    };
+
+    var fileicon = $('<span>', {'class': 'glyphicon glyphicon-tag'});
+    var filelink = $('<a>', {'href': '/' + username + '/tags/' + file['name']}).html(file['name']);
+
+    output['filetd'] = $('<td>').append(fileicon).append(filelink);
+
+    return output;
+}
+
 function flists(files, username) {
     $("#files tbody").empty();
+    $("#tags tbody").empty();
 
     for(var index in files) {
-        var file = files[index];
+        let file = files[index];
 
-        var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
-        var seeicon = $('<span>', {'class': 'glyphicon glyphicon-eye-open'});
+        if(file['type'] == "regular" || file['type'] == "symlink") {
+            let entry = flists_file(file, username);
 
-        var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
-        var seelink = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+            var tr = $('<tr>');
+            tr.append(entry['filetd']);
+            tr.append($('<td>').append(entry['seelink']));
+            tr.append($('<td>').html(entry['size']));
+            tr.append($('<td>').html(new Date(entry['updated'] * 1000)));
 
-        var filetd = $('<td>').append(fileicon).append(filelink);
-        if(file['type'] == 'symlink') {
-            var localusername = username;
+            $('#files tbody').append(tr);
 
-            // cross repository symlink
-            if(file['target'].includes("/"))
-                localusername = '..';
-
-            var link = localusername + '/' + file['target'] + '.md';
-
-            filetd.append($('<span>').html(" ➔ "));
-            filetd.append($('<a>', {'href': link}).html(file['target']));
         }
 
-        var tr = $('<tr>');
-        tr.append(filetd);
-        tr.append($('<td>').append(seelink));
-        tr.append($('<td>').html(file['size']));
-        tr.append($('<td>').html(new Date(file['updated'] * 1000)));
+        if(file['type'] == "tag") {
+            $("#tags").show();
 
-        $('#files tbody').append(tr);
+            let entry = flists_tag(file, username);
+
+            var tr = $('<tr>', {'class': 'warning'});
+            tr.append(entry['filetd']);
+            tr.append($('<td>').html(new Date(entry['updated'] * 1000)));
+
+            $('#tags tbody').append(tr);
+        }
     }
 }
 

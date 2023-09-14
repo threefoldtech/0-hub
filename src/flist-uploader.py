@@ -340,6 +340,18 @@ def show_user(username):
 
     return globalTemplate("user.html", {'targetuser': username})
 
+@app.route('/<username>/tags/<tag>')
+def show_user_tags(username, tag):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
+        abort(404)
+
+    if not os.path.exists(flist.user_path + "/.tag-" + tag):
+        abort(404)
+
+    return globalTemplate("tags.html", {'targetuser': username, "targettag": tag})
+
+
 @app.route('/<username>/<flist>.md')
 def show_flist_md(username, flist):
     flist = HubPublicFlist(config, username, flist)
@@ -470,6 +482,22 @@ def api_user_contents(username):
         abort(404)
 
     contents = api_user_contents(username, flist.user_path)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route('/api/flist/<username>/tags/<tag>')
+def api_user_contents_tags(username, tag):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
+        abort(404)
+
+    if not os.path.exists(flist.user_path + "/.tag-" + tag):
+        abort(404)
+
+    contents = api_user_contents_tags(username, flist.user_path, tag)
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -909,7 +937,9 @@ def api_repositories():
     return output
 
 def clean_symlink(linkname):
-    return linkname.replace("../", "")
+    linkname = linkname.replace("../", "")
+    linkname = linkname.replace(".tag-", "tags/")
+    return linkname
 
 def api_user_contents(username, userpath):
     files = sorted(os.listdir(userpath))
@@ -935,6 +965,18 @@ def api_user_contents(username, userpath):
                 'target': clean_symlink(target),
             })
 
+        if S_ISDIR(stat.st_mode):
+            # ignore directories which are not tags
+            if not file.startswith(".tag-"):
+                continue
+
+            contents.append({
+                'name': file[5:],
+                'size': "0 KB",
+                'updated': int(stat.st_mtime),
+                'type': 'tag',
+            })
+
         else:
             contents.append({
                 'name': file,
@@ -944,6 +986,35 @@ def api_user_contents(username, userpath):
             })
 
     return contents
+
+def api_user_contents_tags(username, userpath, tag):
+    files = sorted(os.listdir(userpath + "/.tag-" + tag))
+    contents = []
+
+    for file in files:
+        filepath = os.path.join(config['public-directory'], username + "/.tag-" + tag, file)
+        stat = os.lstat(filepath)
+
+        if not S_ISLNK(stat.st_mode):
+            continue
+
+        target = os.readlink(filepath)
+        tstat = stat
+
+        if os.path.exists(filepath):
+            tstat = os.stat(filepath)
+
+        contents.append({
+            'name': file,
+            'size': "%.2f KB" % ((tstat.st_size) / 1024),
+            'updated': int(tstat.st_mtime),
+            'linktime': int(stat.st_mtime),
+            'type': 'symlink',
+            'target': clean_symlink(target),
+        })
+
+    return contents
+
 
 def api_fileslist():
     repositories = api_repositories()
