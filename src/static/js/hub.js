@@ -74,6 +74,10 @@ function flists(files, username, tagname) {
     $("#files tbody").empty();
     $("#tags tbody").empty();
 
+    if(files.length == 0) {
+        $("#files tbody").append($('<tr>').append($('<td>', {'colspan': 4}).html("Nothing to show")));
+    }
+
     for(var index in files) {
         let file = files[index];
 

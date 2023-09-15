@@ -604,10 +604,13 @@ def api_my_crosssymlink(linkname, repository, sourcename):
 
     return api_cross_symlink(username, repository, sourcename, linkname)
 
-@app.route('/api/flist/me/<tagname>/<linkname>/tag/<repository>/<sourcename>', methods=['GET'])
+@app.route('/api/flist/me/<tagname>/<linkname>/tag/<repository>/<sourcename>', methods=['GET', 'DELETE'])
 @hub.security.apicall()
 def api_my_tag_add(tagname, linkname, repository, sourcename):
     username = session['username']
+
+    if request.method == 'DELETE':
+        return api_tag_symlink_delete(username, repository, sourcename, tagname, linkname)
 
     return api_tag_symlink(username, repository, sourcename, tagname, linkname)
 
@@ -803,6 +806,28 @@ def api_tag_symlink(username, repository, sourcename, tagname, linkname):
 
     return api_response()
 
+def api_tag_symlink_delete(username, repository, sourcename, tagname, linkname):
+    flist = HubPublicFlist(config, repository, sourcename)
+    linkflist = HubPublicFlist(config, username + "/" + tag(tagname), linkname)
+
+    if not flist.user_exists:
+        return api_response("source repository not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    # remove previous symlink if existing
+    if not os.path.islink(linkflist.target):
+        return api_response("target not found on this tag", 404)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.remove(linkflist.filename)
+
+    os.chdir(cwd)
+
+    return api_response()
 
 def api_promote(username, sourcerepo, sourcefile, targetname):
     flist = HubPublicFlist(config, sourcerepo, sourcefile)
