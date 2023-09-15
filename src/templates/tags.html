@@ -40,11 +40,9 @@
 </div>
 
 <script>
-let tagname = "{{ targettag }}";
-
 $(document).ready(function() {
     $.get("/api/flist/{{ targetuser }}/tags/{{ targettag }}", function(data) {
-        flists(data, "{{ targetuser }}");
+        flists(data, "{{ targetuser }}", "{{ targettag }}");
     });
 });
 </script>

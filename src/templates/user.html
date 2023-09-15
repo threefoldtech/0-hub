@@ -56,7 +56,7 @@
 <script>
 $(document).ready(function() {
     $.get("/api/flist/{{ targetuser }}", function(data) {
-        flists(data, "{{ targetuser }}");
+        flists(data, "{{ targetuser }}", null);
     });
 });
 </script>

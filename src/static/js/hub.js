@@ -19,7 +19,7 @@ function repositories(source) {
     $(window).scrollTop(sessionStorage.getItem('scrollTop') || 0);
 }
 
-function flists_file(file, username) {
+function flists_file(file, username, tagname) {
     var output = {
         'size': file['size'],
         'updated': file['updated'],
@@ -70,7 +70,7 @@ function flists_tag(file, username) {
     return output;
 }
 
-function flists(files, username) {
+function flists(files, username, tagname) {
     $("#files tbody").empty();
     $("#tags tbody").empty();
 
@@ -78,7 +78,7 @@ function flists(files, username) {
         let file = files[index];
 
         if(file['type'] == "regular" || file['type'] == "symlink") {
-            let entry = flists_file(file, username);
+            let entry = flists_file(file, username, tagname);
 
             var tr = $('<tr>');
             tr.append(entry['filetd']);
