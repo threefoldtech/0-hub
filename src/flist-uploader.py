@@ -824,8 +824,16 @@ def api_tag_symlink_delete(username, repository, sourcename, tagname, linkname):
     os.chdir(linkflist.user_path)
 
     os.remove(linkflist.filename)
-
     os.chdir(cwd)
+
+    # directory empty, deleting tag
+    try:
+        if len(os.listdir(linkflist.user_path)) == 0:
+            os.rmdir(linkflist.user_path)
+
+    except Exception as e:
+        print(e)
+        pass
 
     return api_response()
 
