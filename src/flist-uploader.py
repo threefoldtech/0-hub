@@ -1083,7 +1083,7 @@ def api_user_contents(username, userpath):
                 'target': clean_symlink(target),
             })
 
-        if S_ISDIR(stat.st_mode):
+        elif S_ISDIR(stat.st_mode):
             # ignore directories which are not tags
             if not file.startswith(".tag-"):
                 continue
