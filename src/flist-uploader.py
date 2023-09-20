@@ -822,7 +822,7 @@ def api_cross_symlink(username, repository, sourcename, linkname):
 
 def api_tag_symlink(username, repository, sourcename, tagname, linkname):
     flist = HubPublicFlist(config, repository, sourcename)
-    linkflist = HubPublicFlist(config, utag(usernme, tagname), linkname)
+    linkflist = HubPublicFlist(config, utag(username, tagname), linkname)
 
     if not flist.user_exists:
         return api_response("source repository not found", 404)
