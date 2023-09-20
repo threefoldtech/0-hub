@@ -30,12 +30,12 @@ function flists_file(file, username, tagname) {
 
     if(tagname) {
         var filelink = $('<a>', {'href': '/' + username + '/tags/' + tagname + '/' + file['name']}).html(file['name']);
-        output['seelink'] = $('<a>', {'href': '/' + username + '/tags/' + tagname + '/' + file['name'] + '.md'}).append(seeicon);
+        output['seelink'] = $('<a>', {'href': '/' + file['target'] + '.md'}).append(seeicon);
 
     } else {
-        if(file['type'] == 'symlink' && file['target'].includes('/tags')) {
+        if(file['type'] == 'symlink' && file['target'].includes('/tags/')) {
             var filelink = $('<span>').html(file['name']);
-            output['seelink'] = $('<a>', {'href': '/' + username + '/' + file['name'] + '.md'}).append(seeicon);
+            output['seelink'] = $('<a>', {'href': file['target']}).append(seeicon);
 
         } else {
             var filelink = $('<a>', {'href': '/' + username + '/' + file['name']}).html(file['name']);
