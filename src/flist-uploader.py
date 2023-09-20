@@ -604,6 +604,13 @@ def api_my_crosssymlink(linkname, repository, sourcename):
 
     return api_cross_symlink(username, repository, sourcename, linkname)
 
+@app.route('/api/flist/me/<linkname>/crosstag/<repository>/<tagname>', methods=['GET'])
+@hub.security.apicall()
+def api_my_crossstag(linkname, repository, tagname):
+    username = session['username']
+
+    return api_symlink_to_tag(username, linkname, repository, tagname)
+
 @app.route('/api/flist/me/<tagname>/<linkname>/tag/<repository>/<sourcename>', methods=['GET', 'DELETE'])
 @hub.security.apicall()
 def api_my_tag_add(tagname, linkname, repository, sourcename):
@@ -754,6 +761,38 @@ def api_symlink(username, source, linkname):
 
     return api_response()
 
+def api_symlink_to_tag(username, linkname, repository, tagname):
+    flist = HubPublicFlist(config, utag(repository, tagname), "unknown")
+    linkflist = HubPublicFlist(config, username, "unknown")
+
+    if not flist.user_exists:
+        return api_response("source tag not found", 404)
+
+    if linkname.endswith(".flist"):
+        return api_response("tag symlink cannot ends with .flist", 401)
+
+    if os.path.exists(os.path.join(linkflist.user_path, linkname + ".flist")):
+        return api_response("there is a .flist file with the same name existing already", 401)
+
+    # remove previous symlink if existing
+    target = os.path.join(linkflist.user_path, linkname)
+    if os.path.islink(target):
+        os.unlink(target)
+
+    # if it was not a link but a regular file, we don't overwrite
+    # existing flist, we only allows updating links
+    if os.path.isfile(target):
+        return api_response("link destination is already a file", 401)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.symlink("../" + utag(repository, tagname), linkname)
+    os.chdir(cwd)
+
+    return api_response()
+
+
 def api_cross_symlink(username, repository, sourcename, linkname):
     flist = HubPublicFlist(config, repository, sourcename)
     linkflist = HubPublicFlist(config, username, linkname)
@@ -783,7 +822,7 @@ def api_cross_symlink(username, repository, sourcename, linkname):
 
 def api_tag_symlink(username, repository, sourcename, tagname, linkname):
     flist = HubPublicFlist(config, repository, sourcename)
-    linkflist = HubPublicFlist(config, username + "/" + tag(tagname), linkname)
+    linkflist = HubPublicFlist(config, utag(usernme, tagname), linkname)
 
     if not flist.user_exists:
         return api_response("source repository not found", 404)
