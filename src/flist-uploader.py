@@ -749,8 +749,14 @@ def api_delete(username, source):
         return api_response("user not found", 404)
 
     if not flist.file_exists:
+        # delete if it's a tag symlink
+        if flist.file_raw_exists:
+            os.unlink(flist.file_raw_target)
+            return api_response()
+
         return api_response("source not found", 404)
 
+    # delete regular file
     os.unlink(flist.target)
 
     return api_response()
