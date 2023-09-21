@@ -33,7 +33,7 @@ function flists_file(file, username, tagname) {
         output['seelink'] = $('<a>', {'href': '/' + file['target'] + '.md'}).append(seeicon);
 
     } else {
-        if(file['type'] == 'symlink' && file['target'].includes('/tags/')) {
+        if(file['type'] == 'taglink') {
             var filelink = $('<span>').html(file['name']);
             output['seelink'] = $('<a>', {'href': file['target']}).append(seeicon);
 
@@ -45,7 +45,7 @@ function flists_file(file, username, tagname) {
 
     output['filetd'] = $('<td>').append(fileicon).append(filelink);
 
-    if(file['type'] == 'symlink') {
+    if(file['type'] == 'symlink' || file['type'] == 'taglink') {
         var localusername = username + '/';
 
         // cross repository symlink
@@ -87,7 +87,7 @@ function flists(files, username, tagname) {
     for(var index in files) {
         let file = files[index];
 
-        if(file['type'] == "regular" || file['type'] == "symlink") {
+        if(file['type'] == "regular" || file['type'] == "symlink" || file['type'] == "taglink") {
             let entry = flists_file(file, username, tagname);
 
             var tr = $('<tr>');

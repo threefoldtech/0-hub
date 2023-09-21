@@ -1074,12 +1074,16 @@ def api_user_contents(username, userpath):
             if os.path.exists(filepath):
                 tstat = os.stat(filepath)
 
+            stype = 'symlink'
+            if '/.tag-' in target:
+                stype = 'taglink'
+
             contents.append({
                 'name': file,
                 'size': "%.2f KB" % ((tstat.st_size) / 1024),
                 'updated': int(tstat.st_mtime),
                 'linktime': int(stat.st_mtime),
-                'type': 'symlink',
+                'type': stype,
                 'target': clean_symlink(target),
             })
 
