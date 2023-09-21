@@ -555,6 +555,27 @@ def api_inspect_light(username, flist):
 
     return response
 
+@app.route('/api/flist/<username>/<flist>/taglink', methods=['GET'])
+def api_inspect_taglink(username, flist):
+    flist = HubPublicFlist(config, username, flist)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_raw_exists:
+        return api_response("source not found", 404)
+
+    target = flist.file_raw_destination()
+    if target == None:
+        return api_response("could not read tag link", 401)
+
+    contents = {"target": clean_symlink(target)}
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
 @app.route('/api/flist/<username>/<flist>/metadata')
 def api_readme(username, flist):
     flist = HubPublicFlist(config, username, flist)
