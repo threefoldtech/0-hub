@@ -47,6 +47,10 @@ table#files span.glyphicon-file {
     margin-right: 5px;
 }
 
+table#tags span.glyphicon-tag {
+    margin-right: 5px;
+}
+
 table#files span.glyphicon-eye-open {
     color: #4D4D4D;
     margin-right: 5px;
@@ -106,4 +110,8 @@ article.markdown-body a.initial {
 
 pre.meta {
     height: auto;
+}
+
+#tags {
+    display: none;
 }

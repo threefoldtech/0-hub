@@ -216,6 +216,14 @@ def flist_merge_data(sources, target):
 
     return data
 
+# tags helper
+def tag(name):
+    return ".tag-" + name
+
+def utag(username, tagname):
+    return username + "/" + tag(tagname)
+
+
 
 ######################################
 #
@@ -340,6 +348,18 @@ def show_user(username):
 
     return globalTemplate("user.html", {'targetuser': username})
 
+@app.route('/<username>/tags/<tag>')
+def show_user_tags(username, tag):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
+        abort(404)
+
+    if not os.path.exists(utag(flist.user_path, tag)):
+        abort(404)
+
+    return globalTemplate("tags.html", {'targetuser': username, "targettag": tag})
+
+
 @app.route('/<username>/<flist>.md')
 def show_flist_md(username, flist):
     flist = HubPublicFlist(config, username, flist)
@@ -395,6 +415,11 @@ def show_flist_json(username, flist):
 @app.route('/<username>/<flist>.flist')
 def download_flist(username, flist):
     flist = HubPublicFlist(config, username, flist)
+    return send_from_directory(directory=flist.user_path, path=flist.filename)
+
+@app.route('/<username>/tags/<tagname>/<flist>.flist')
+def download_flist_tag(username, tagname, flist):
+    flist = HubPublicFlist(config, utag(username, tagname), flist)
     return send_from_directory(directory=flist.user_path, path=flist.filename)
 
 @app.route('/<username>/<flist>.flist.md5')
@@ -476,6 +501,22 @@ def api_user_contents(username):
 
     return response
 
+@app.route('/api/flist/<username>/tags/<tag>')
+def api_user_contents_tags(username, tag):
+    flist = HubPublicFlist(config, username, "unknown")
+    if not flist.user_exists:
+        abort(404)
+
+    if not os.path.exists(flist.user_path + "/.tag-" + tag):
+        abort(404)
+
+    contents = api_user_contents_tags(username, flist.user_path, tag)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
 @app.route('/api/flist/<username>/<flist>', methods=['GET', 'INFO'])
 def api_inspect(username, flist):
     flist = HubPublicFlist(config, username, flist)
@@ -508,6 +549,27 @@ def api_inspect_light(username, flist):
         return api_response("source not found", 404)
 
     contents = api_flist_info(flist)
+
+    response = make_response(json.dumps(contents) + "\n")
+    response.headers["Content-Type"] = "application/json"
+
+    return response
+
+@app.route('/api/flist/<username>/<flist>/taglink', methods=['GET'])
+def api_inspect_taglink(username, flist):
+    flist = HubPublicFlist(config, username, flist)
+
+    if not flist.user_exists:
+        return api_response("user not found", 404)
+
+    if not flist.file_raw_exists:
+        return api_response("source not found", 404)
+
+    target = flist.file_raw_destination()
+    if target == None:
+        return api_response("could not read tag link", 401)
+
+    contents = {"target": clean_symlink(target)}
 
     response = make_response(json.dumps(contents) + "\n")
     response.headers["Content-Type"] = "application/json"
@@ -562,6 +624,23 @@ def api_my_crosssymlink(linkname, repository, sourcename):
     username = session['username']
 
     return api_cross_symlink(username, repository, sourcename, linkname)
+
+@app.route('/api/flist/me/<linkname>/crosstag/<repository>/<tagname>', methods=['GET'])
+@hub.security.apicall()
+def api_my_crossstag(linkname, repository, tagname):
+    username = session['username']
+
+    return api_symlink_to_tag(username, linkname, repository, tagname)
+
+@app.route('/api/flist/me/<tagname>/<linkname>/tag/<repository>/<sourcename>', methods=['GET', 'DELETE'])
+@hub.security.apicall()
+def api_my_tag_add(tagname, linkname, repository, sourcename):
+    username = session['username']
+
+    if request.method == 'DELETE':
+        return api_tag_symlink_delete(username, repository, sourcename, tagname, linkname)
+
+    return api_tag_symlink(username, repository, sourcename, tagname, linkname)
 
 @app.route('/api/flist/me/<source>/rename/<destination>')
 @hub.security.apicall()
@@ -670,8 +749,14 @@ def api_delete(username, source):
         return api_response("user not found", 404)
 
     if not flist.file_exists:
+        # delete if it's a tag symlink
+        if flist.file_raw_exists:
+            os.unlink(flist.file_raw_target)
+            return api_response()
+
         return api_response("source not found", 404)
 
+    # delete regular file
     os.unlink(flist.target)
 
     return api_response()
@@ -703,6 +788,38 @@ def api_symlink(username, source, linkname):
 
     return api_response()
 
+def api_symlink_to_tag(username, linkname, repository, tagname):
+    flist = HubPublicFlist(config, utag(repository, tagname), "unknown")
+    linkflist = HubPublicFlist(config, username, "unknown")
+
+    if not flist.user_exists:
+        return api_response("source tag not found", 404)
+
+    if linkname.endswith(".flist"):
+        return api_response("tag symlink cannot ends with .flist", 401)
+
+    if os.path.exists(os.path.join(linkflist.user_path, linkname + ".flist")):
+        return api_response("there is a .flist file with the same name existing already", 401)
+
+    # remove previous symlink if existing
+    target = os.path.join(linkflist.user_path, linkname)
+    if os.path.islink(target):
+        os.unlink(target)
+
+    # if it was not a link but a regular file, we don't overwrite
+    # existing flist, we only allows updating links
+    if os.path.isfile(target):
+        return api_response("link destination is already a file", 401)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.symlink("../" + utag(repository, tagname), linkname)
+    os.chdir(cwd)
+
+    return api_response()
+
+
 def api_cross_symlink(username, repository, sourcename, linkname):
     flist = HubPublicFlist(config, repository, sourcename)
     linkflist = HubPublicFlist(config, username, linkname)
@@ -727,6 +844,62 @@ def api_cross_symlink(username, repository, sourcename, linkname):
 
     os.symlink("../" + flist.username + "/" + flist.filename, linkflist.filename)
     os.chdir(cwd)
+
+    return api_response()
+
+def api_tag_symlink(username, repository, sourcename, tagname, linkname):
+    flist = HubPublicFlist(config, repository, sourcename)
+    linkflist = HubPublicFlist(config, utag(username, tagname), linkname)
+
+    if not flist.user_exists:
+        return api_response("source repository not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    if not os.path.exists(linkflist.user_path):
+        os.mkdir(linkflist.user_path)
+
+    # remove previous symlink if existing
+    if os.path.islink(linkflist.target):
+        os.unlink(linkflist.target)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.symlink("../../" + flist.username + "/" + flist.filename, linkflist.filename)
+    os.chdir(cwd)
+
+    return api_response()
+
+def api_tag_symlink_delete(username, repository, sourcename, tagname, linkname):
+    flist = HubPublicFlist(config, repository, sourcename)
+    linkflist = HubPublicFlist(config, username + "/" + tag(tagname), linkname)
+
+    if not flist.user_exists:
+        return api_response("source repository not found", 404)
+
+    if not flist.file_exists:
+        return api_response("source not found", 404)
+
+    # remove previous symlink if existing
+    if not os.path.islink(linkflist.target):
+        return api_response("target not found on this tag", 404)
+
+    cwd = os.getcwd()
+    os.chdir(linkflist.user_path)
+
+    os.remove(linkflist.filename)
+    os.chdir(cwd)
+
+    # directory empty, deleting tag
+    try:
+        if len(os.listdir(linkflist.user_path)) == 0:
+            os.rmdir(linkflist.user_path)
+
+    except Exception as e:
+        print(e)
+        pass
 
     return api_response()
 
@@ -909,7 +1082,9 @@ def api_repositories():
     return output
 
 def clean_symlink(linkname):
-    return linkname.replace("../", "")
+    linkname = linkname.replace("../", "")
+    linkname = linkname.replace(".tag-", "tags/")
+    return linkname
 
 def api_user_contents(username, userpath):
     files = sorted(os.listdir(userpath))
@@ -926,13 +1101,29 @@ def api_user_contents(username, userpath):
             if os.path.exists(filepath):
                 tstat = os.stat(filepath)
 
+            stype = 'symlink'
+            if '/.tag-' in target:
+                stype = 'taglink'
+
             contents.append({
                 'name': file,
                 'size': "%.2f KB" % ((tstat.st_size) / 1024),
                 'updated': int(tstat.st_mtime),
                 'linktime': int(stat.st_mtime),
-                'type': 'symlink',
+                'type': stype,
                 'target': clean_symlink(target),
+            })
+
+        elif S_ISDIR(stat.st_mode):
+            # ignore directories which are not tags
+            if not file.startswith(".tag-"):
+                continue
+
+            contents.append({
+                'name': file[5:],
+                'size': "0 KB",
+                'updated': int(stat.st_mtime),
+                'type': 'tag',
             })
 
         else:
@@ -944,6 +1135,35 @@ def api_user_contents(username, userpath):
             })
 
     return contents
+
+def api_user_contents_tags(username, userpath, tag):
+    files = sorted(os.listdir(userpath + "/.tag-" + tag))
+    contents = []
+
+    for file in files:
+        filepath = os.path.join(config['public-directory'], username + "/.tag-" + tag, file)
+        stat = os.lstat(filepath)
+
+        if not S_ISLNK(stat.st_mode):
+            continue
+
+        target = os.readlink(filepath)
+        tstat = stat
+
+        if os.path.exists(filepath):
+            tstat = os.stat(filepath)
+
+        contents.append({
+            'name': file,
+            'size': "%.2f KB" % ((tstat.st_size) / 1024),
+            'updated': int(tstat.st_mtime),
+            'linktime': int(stat.st_mtime),
+            'type': 'symlink',
+            'target': clean_symlink(target),
+        })
+
+    return contents
+
 
 def api_fileslist():
     repositories = api_repositories()

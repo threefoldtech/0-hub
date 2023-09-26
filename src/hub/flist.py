@@ -408,6 +408,22 @@ class HubPublicFlist:
         return (os.path.isfile(self.target) or os.path.islink(self.target))
 
     @property
+    def file_raw_target(self):
+        # try without .flist in case of tag
+        return self.target[:-6]
+
+    @property
+    def file_raw_exists(self):
+        # try without .flist in case of tag
+        return os.path.islink(self.file_raw_target)
+
+    def file_raw_destination(self):
+        if not self.file_raw_exists:
+            return None
+
+        return os.readlink(self.target[:-6])
+
+    @property
     def checksum(self):
         return self.raw.checksum(self.target)
 

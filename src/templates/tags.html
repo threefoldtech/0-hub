@@ -14,26 +14,12 @@
 <div class="container">
 <ol class="breadcrumb">
     <li><a href="/">Repositories</a></li>
-    <li class="active">{{ targetuser }}</li>
+    <li><a href="/{{ targetuser }}">{{ targetuser }}</a></li>
+    <li class="active">{{ targettag }}</li>
 </ol>
 
 <div id="home" style="display: block;">
-    <h2>{{ targetuser }}</h2>
-    <table class="table table-hover" id="tags">
-        <thead>
-            <tr>
-                <th style="width: 50%">Tag Name</th>
-                <th>Updated</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            <tr class="warning">
-                <td colspan="2">Loading tags...</td>
-            </tr>
-        </tbody>
-    </table>
-
+    <h2>{{ targetuser }} / {{ targettag }}</h2>
     <table class="table table-hover" id="files">
         <thead>
             <tr>
@@ -55,8 +41,8 @@
 
 <script>
 $(document).ready(function() {
-    $.get("/api/flist/{{ targetuser }}", function(data) {
-        flists(data, "{{ targetuser }}", null);
+    $.get("/api/flist/{{ targetuser }}/tags/{{ targettag }}", function(data) {
+        flists(data, "{{ targetuser }}", "{{ targettag }}");
     });
 });
 </script>
