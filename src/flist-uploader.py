@@ -970,6 +970,10 @@ def api_flist_upload(request, username, validate=False):
     source = os.path.join(config['upload-directory'], filename)
     file.save(source)
 
+    if "X-Original-Name" in request.headers:
+        filename = request.headers.get("X-Original-Name")
+        print("[+] using custom filename from header: %s" % filename)
+
     cleanfilename = file_from_flist(filename)
     flist = HubPublicFlist(config, username, cleanfilename)
     flist.user_create()
