@@ -971,7 +971,7 @@ def api_flist_upload(request, username, validate=False):
     file.save(source)
 
     if "X-Original-Name" in request.headers:
-        filename = request.headers.get("X-Original-Name")
+        filename = os.path.basename(request.headers.get("X-Original-Name"))
         print("[+] using custom filename from header: %s" % filename)
 
     cleanfilename = file_from_flist(filename)
