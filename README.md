@@ -59,16 +59,23 @@ See example below.
   - Returns a json array with all repositories and files found
 - `/api/flist/<repository>` (**GET**)
   - Returns a json array of each flist found inside specified repository.
-  - Each entry contains `filename`, `size`, `updated` date and `type` (regular or symlink), optionally `target` if it's a symbolic link.
-- `/api/flist/<repository>/<flist>` (**GET**)
-  - Returns json object with flist dumps (full file list)
+  - Each entry contains `filename`, `size`, `updated` date and `type` (regular, symlink, taglink) and optionally `target` if it's a link.
+- `/api/flist/<repository>/<flist>` (**GET**, **INFO**)
+  - **GET**: returns json object with flist dumps (full file list)
+  - **INFO**: returns a reduced information (no files dumps) about flist
+- `/api/flist/<repository>/<flist>/light` (**GET**)
+  - Same as **INFO** above
+- `/api/flist/<repository>/<flist>/taglink` (**GET**)
+  - Get target of a `taglink` (link to a tag)
+- `/api/flist/<repository>/tags/<tag>` (**GET**)
+  - Returns content of a tags (links inside a tag)
 
 ### Restricted API endpoints (authentication required)
 - `/api/flist/me` (**GET**)
   - Returns json object with some basic information about yourself (authenticated user)
 - `/api/flist/me/<flist>` (**GET**, **DELETE**)
   - **GET**: same as `/api/flist/<your-repository>/<flist>`
-  - **DELETE**: remove that specific flist
+  - **DELETE**: remove that specific flist (or taglink)
 - `/api/flist/me/<source>/link/<linkname>` (**GET**)
   - Create a symbolic link `linkname` pointing to `source`
 - `/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>` (**GET**)
@@ -92,7 +99,12 @@ See example below.
   - **POST**: converts a docker image to an flist
   - You need to passes `image` form argument with docker-image name
   - The resulting conversion will stay on your repository
-
+- `/api/flist/me/<tagname>/<name>/tag/<repository>/<flist>` (**GET**, **DELETE**)
+  - **GET**: add flist `repository/flist` in user tag `tagname` with name `name`
+  - **DELETE**: remove `name` from `tagname`, if tag become empty, tag is removed
+- `/api/flist/me/<name>/crosstag/<repository>/<tagname>` (**GET**, **DELETE**)
+  - **GET**: create a link `name` inside your repository, pointing to `repository/tag`
+ 
 ### Example
 Simple example how to upload to the hub in command line. Your token can be generated on the website.
 ```bash
