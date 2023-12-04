@@ -12,7 +12,6 @@ import time
 import re
 from flask import Flask, request, redirect, session
 
-
 """
 # Generate an x25519 key
 openssl genpkey -algorithm x25519 -out private.key
@@ -26,9 +25,10 @@ openssl pkey -in private.key -text_pub | grep '^ ' | xargs | xxd -r -p | base64
 """
 
 class ThreeBotAuthenticator:
-    def __init__(self, app, appid, privatekey, signseed):
+    def __init__(self, app, appid, privatekey, signseed, vusers):
         self.app = app
         self.appid = appid
+        self.vusers = vusers
 
         # Private key used to uncrypt ciphertext
         self.privkey = nacl.public.PrivateKey(privatekey, nacl.encoding.Base64Encoder)
@@ -60,10 +60,14 @@ class ThreeBotAuthenticator:
             print("Invalid signature")
             return "invalid signature", 401
 
-        print("Authorized", signed)
-
         payload = signed.decode('utf-8')
         userdata = json.loads(payload)
+
+        if request.cookies.get("active-user") in self.vusers:
+            target = request.cookies.get("active-user")
+            if userdata[0] == self.vusers[target]:
+                print("[+] threebot on behalf: %s [from %s]" % (target, userdata[0]))
+                return target, 200
 
         return userdata[0], 200
 
@@ -181,13 +185,13 @@ class ThreeBotAuthenticator:
         def token():
             return self.logrequest("/callback_token")
 
-def configure(app, appid, privatekey, signseed):
+def configure(app, appid, privatekey, signseed, vusers):
     app.config['threebot_config'] = dict(
         appid=appid,
         privatekey=privatekey
     )
 
-    auth = ThreeBotAuthenticator(app, appid, privatekey, signseed)
+    auth = ThreeBotAuthenticator(app, appid, privatekey, signseed, vusers)
 
     app.config['threebot_config']['auth'] = auth
 

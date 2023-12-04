@@ -80,7 +80,12 @@ if config['authentication']:
         '/_iyo_callback', None, True, True, 'organization', config['guest-token']
     )
 
-    hub.threebot.configure(app, config['threebot-appid'], config['threebot-privatekey'], config['threebot-seed'])
+    hub.threebot.configure(app,
+        config['threebot-appid'],
+        config['threebot-privatekey'],
+        config['threebot-seed'],
+        config['threebot-users-map']
+    )
 
 else:
     hub.itsyouonline.disabled(app)
