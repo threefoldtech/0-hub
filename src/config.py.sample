@@ -150,6 +150,16 @@ config = {
     'threebot-appid': 'hub.tld',
     'threebot-seed': b'',
 
+
+    ## In order to maximize compatibility from legacy version using itsyou.online,
+    ## offline hub or local only and threebot (with username ending with .3bot), there
+    ## is a kind-of 'virtual users' to map users not ending with .3bot and a user-defined
+    ## threebot account. This feature allow management and api-call from a threebot token
+    ## to a legacy account. Map key is the virtual username, value is the threebot username.
+    'threebot-users-map': {
+        'official-apps': 'tfofficial.3bot',
+    },
+
     ## When using authentication, there is also possible to hard code
     ## a 'guest' token, this token will be matched like an itsyou.online
     ## token which still works for the api. This is a workaround to be able
