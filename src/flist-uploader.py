@@ -53,6 +53,20 @@ print("[+] flist creation  : %s" % config['flist-work-directory'])
 print("[+] docker creation : %s" % config['docker-work-directory'])
 print("[+] public directory: %s" % config['public-directory'])
 
+checking = [
+    config['userdata-root-path'],
+    config['workdir-root-path'],
+    config['public-directory'],
+    config['flist-work-directory'],
+    config['docker-work-directory'],
+    config['upload-directory']
+]
+
+for check in checking:
+    if not os.path.exists(check):
+        print("[+] creating non-existing directory: %s" % check)
+        os.mkdir(check)
+
 #
 # pre-check settings
 # checking configuration settings needed for runtime
