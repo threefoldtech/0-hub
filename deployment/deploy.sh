@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# LEGACY SCRIPT
+# Please use Dockerfile as reference
+#
+
 if [ -z "$1" ]; then
     echo "Missing hub deployment target directory"
     exit 1
