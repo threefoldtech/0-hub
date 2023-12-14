@@ -7,6 +7,21 @@ It contains all the source code needed to make the public Zero-OS Hub website.
 - [master](https://github.com/threefoldtech/0-hub/tree/master) - stable production version
 - [playground](https://github.com/threefoldtech/0-hub/tree/playground) - development playground version
 
+# Docker Image
+
+You can use GitHub Package directly: `docker pull ghcr.io/threefoldtech/0-hub:master`
+
+Here are some point you need to run the hub:
+- Mount `/hub/src/config.py` with your configuration file
+- Mount `/public` with your target public directories
+- Mount `/workdir` with your target temporary directory
+- Mount host docker.sock to `/var/run/docker.sock` to be able to run docker converter
+
+Regarding configuration, here are some requirement:
+- `zflist-bin` have to be set to: `/usr/bin/zflist` (it's part of the image)
+
+Dockerfile can be found on `deployment` directory.
+
 # The Hub
 The Zero OS Hub allows you to do multiple things.
 
