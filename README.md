@@ -18,7 +18,8 @@ Here are some point you need to run the hub:
 - Mount host docker.sock to `/var/run/docker.sock` to be able to run docker converter
 
 Regarding configuration, here are some requirement:
-- `zflist-bin` have to be set to: `/usr/bin/zflist` (it's part of the image)
+- `zflist-bin` have to be or unset or set to: `/usr/bin/zflist` (it's part of the image)
+  - Comment this line in config to make it simple
 
 Dockerfile can be found on `deployment` directory.
 

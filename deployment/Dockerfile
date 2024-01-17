@@ -47,6 +47,7 @@ RUN apt-get update && apt-get install -y \
   python3-requests python3-nacl python3-jose && \
   tar -xf /hub.tar -C / && rm -f /hub.tar && \
   mkdir /public /workdir && \
+  touch /.hub-container && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /hub/src

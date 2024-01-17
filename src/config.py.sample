@@ -58,7 +58,8 @@ config = {
 
     ## You can provide an optional zflist binary path
     ## if not provided, the default value will be used
-    ## (/opt/0-flist/zflist/zflist)
+    ##  - /opt/0-flist/zflist/zflist (default)
+    ##  - /usr/bin/zflist (hub container)
     ##
     ## Note: you _need_ to use a non-debug version of zflist
     ## you can make a non-debug version of zflist by using
@@ -71,7 +72,7 @@ config = {
     ## If you have a debug version of zflist, it will print
     ## extra debug information and json won't be parsed
     ## correctly
-    'zflist-bin': '/opt/0-flist/zflist/zflist',
+    # 'zflist-bin': '/opt/0-flist/zflist/zflist',
 
     ## You can specify a special userdata (list of users
     ## directories) and workdir (temporary directories where

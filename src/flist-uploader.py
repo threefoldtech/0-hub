@@ -23,10 +23,16 @@ from hub.notifier import EventNotifier
 # theses location should works out-of-box if you use default settings
 #
 if not 'userdata-root-path' in config:
-    config['userdata-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../public")
+    if os.path.exists("/.hub-container"):
+        config['userdata-root-path'] = "/public"
+    else:
+        config['userdata-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../public")
 
 if not 'workdir-root-path' in config:
-    config['workdir-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../workdir")
+    if os.path.exists("/.hub-container"):
+        config['workdir-root-path'] = "/workdir"
+    else:
+        config['workdir-root-path'] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../workdir")
 
 if not 'public-directory' in config:
     config['public-directory'] = os.path.join(config['userdata-root-path'], "users")
@@ -46,12 +52,16 @@ if not 'allowed-extensions' in config:
 if not 'authentication' in config:
     config['authentication'] = True
 
-print("[+] user  directory : %s" % config['userdata-root-path'])
-print("[+] works directory : %s" % config['workdir-root-path'])
-print("[+] upload directory: %s" % config['upload-directory'])
-print("[+] flist creation  : %s" % config['flist-work-directory'])
-print("[+] docker creation : %s" % config['docker-work-directory'])
-print("[+] public directory: %s" % config['public-directory'])
+if not 'zflist-bin' in config and os.path.exists("/.hub-container"):
+    config['zflist-bin'] = '/usr/bin/zflist'
+
+print("[+] userdata directory: %s" % config['userdata-root-path'])
+print("[+] workdir directory : %s" % config['workdir-root-path'])
+print("[+] upload directory  : %s" % config['upload-directory'])
+print("[+] flist creation    : %s" % config['flist-work-directory'])
+print("[+] docker creation   : %s" % config['docker-work-directory'])
+print("[+] public directory  : %s" % config['public-directory'])
+print("[+] zflist binary path: %s" % config['zflist-bin'])
 
 checking = [
     config['userdata-root-path'],
