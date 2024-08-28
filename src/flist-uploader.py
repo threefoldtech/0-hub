@@ -272,6 +272,13 @@ def logout():
 def login_method():
     return internalRedirect("logins.html")
 
+@app.route('/readonly')
+def read_only_mode():
+    if not config['readonly']:
+        return redirect("/")
+
+    return globalTemplate("readonly.html", {})
+
 @app.route('/login-iyo')
 @hub.itsyouonline.force_login()
 def login_iyo():

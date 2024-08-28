@@ -8,6 +8,9 @@ def apicall():
     def decorator(handler):
         @wraps(handler)
         def _wrapper(*args, **kwargs):
+            if config['readonly']:
+                return jsonify({"message": "readonly mode", "status": "error"}), 400
+
             if not config['authentication']:
                 session['accounts'] = ['Administrator']
                 session['username'] = 'Administrator'
@@ -48,6 +51,9 @@ def protected():
     def decorator(handler):
         @wraps(handler)
         def _wrapper(*args, **kwargs):
+            if config['readonly']:
+                return redirect("/readonly")
+
             if not config['authentication']:
                 session['accounts'] = ['Administrator']
                 session['username'] = 'Administrator'
