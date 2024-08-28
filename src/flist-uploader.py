@@ -52,6 +52,9 @@ if not 'allowed-extensions' in config:
 if not 'authentication' in config:
     config['authentication'] = True
 
+if not 'readonly' in config:
+    config['readonly'] = False
+
 if not 'zflist-bin' in config and os.path.exists("/.hub-container"):
     config['zflist-bin'] = '/usr/bin/zflist'
 
