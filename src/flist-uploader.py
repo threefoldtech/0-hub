@@ -1119,8 +1119,14 @@ def api_repositories():
         if not os.path.isdir(target):
             continue
 
+        dirstat = os.lstat(target)
+
         official = (user in config['official-repositories'])
-        output.append({'name': user, 'official': official})
+        output.append({
+            'name': user,
+            'official': official,
+            'updated': int(dirstat.st_mtime),
+        })
 
     return output
 
