@@ -54,10 +54,6 @@ class HubFlistSyncer:
             if repo['updated'] > int(dirstat.st_mtime):
                 updated.append(repo)
 
-            else:
-                # FIXME: force update for legacy purpose
-                os.utime(userpath, (int(time.time()), repo['updated']))
-
         print(f"[+] {len(updated)} / {len(repositories)} local repositories to update")
 
         return updated
