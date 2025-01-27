@@ -34,6 +34,11 @@ class FListRemoteClone:
 
     def download(self, target):
         url = f"{self.basehub}/{target}"
+
+        # support plain url as well
+        if target.startswith("http"):
+            url = target
+
         destination = f"{self.tempdir}/download.flist"
 
         print(f"[+] fetching: {url}")
@@ -91,6 +96,7 @@ class FListRemoteClone:
             sys.stdout.write(f"\r[+] syncing database: {proceed} / {total} [{percent:.2f} %%]")
             sys.stdout.flush()
 
+        print("")
         print("[+] database synchronized")
 
     def clone(self, target):
