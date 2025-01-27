@@ -42,7 +42,9 @@ FROM ubuntu:22.04
 COPY --from=build /0-flist/zflist/zflist /usr/bin/
 COPY --from=build /hub.tar /
 
-RUN apt-get update && apt-get install -y \
+RUN export DEBIAN_FRONTEND=noninteractive && \
+  export DEBCONF_NONINTERACTIVE_SEEN=true && \
+  apt-get update && apt-get install -y \
   python3-flask python3-redis python3-docker python3-pytoml \
   python3-requests python3-nacl python3-jose \
   docker.io && \
