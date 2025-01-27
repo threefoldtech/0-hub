@@ -45,6 +45,7 @@ COPY --from=build /hub.tar /
 RUN apt-get update && apt-get install -y \
   python3-flask python3-redis python3-docker python3-pytoml \
   python3-requests python3-nacl python3-jose && \
+  docker.io && \
   tar -xf /hub.tar -C / && rm -f /hub.tar && \
   mkdir /public /workdir && \
   touch /.hub-container && \
