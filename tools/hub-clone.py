@@ -9,7 +9,7 @@ import tempfile
 import json
 
 class HubFlistSyncer:
-    def __init__(self, baseurl, localdir):
+    def __init__(self, baseurl, localdir, newhost):
         self.baseurl = baseurl
         self.localdir = localdir
 
@@ -18,6 +18,10 @@ class HubFlistSyncer:
         self.root = os.getcwd()
         self.downloaded = 0
         self.files = 0
+
+        self.backhost = newhost
+        self.backport = 9900
+        self.backname = "default"
 
     #
     # remote helpers
@@ -112,7 +116,7 @@ class HubFlistSyncer:
                 os.remove(targetfile)
 
         url = f"{self.baseurl}/{username}/{entry['name']}"
-        sys.stdout.write(f"\r[+] downloading: {url} \033\x5bK")
+        print(f"\r[+] downloading: {url} \033\x5bK")
 
         r = requests.get(url)
         with open(targetfile, "wb") as f:
@@ -243,8 +247,7 @@ class HubFlistSyncer:
                 print("[-] legacy flist, no metadata records found, initializing")
                 cursor.execute("CREATE TABLE metadata (key VARCHAR(64) PRIMARY KEY, value TEXT);")
 
-            # FIXME: takes theses settings from a main place
-            backend = json.dumps({"namespace": "default", "host": "hub.updated.host", "port": 7900})
+            backend = json.dumps({"namespace": self.backname, "host": self.backhost, "port": self.backport})
 
             cursor.execute("REPLACE INTO metadata (key, value) VALUES ('backend', ?)", (backend,))
             db.commit()
@@ -262,20 +265,21 @@ class HubFlistSyncer:
         return True
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 4:
         print("")
-        print(f"  Usage: {sys.argv[0]} [remote-host] [local-directory]")
+        print(f"  Usage: {sys.argv[0]} [remote-host] [local-directory] [local-host]")
         print("")
         print("  Example:")
-        print(f"    {sys.argv[0]} https://hub.grid.tf /tmp/users")
+        print(f"    {sys.argv[0]} https://hub.grid.tf /tmp/users mirror.hub.grid.tf")
         print("")
 
         sys.exit(1)
 
     host = sys.argv[1]
     target = sys.argv[2]
+    newhost = sys.argv[3]
 
-    sync = HubFlistSyncer(host, target)
+    sync = HubFlistSyncer(host, target, newhost)
 
     repositories = sync.remote_repositories()
     updating = sync.local_sync_repositories(repositories)
