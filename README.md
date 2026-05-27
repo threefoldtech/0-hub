@@ -1,10 +1,10 @@
-# 0-Hub
+# ZOS Flist Hub
 
 A container image registry and management service for distributing flists, a lightweight container format used to package and deploy workloads on decentralized infrastructure.
 
 ## What this is
 
-0-Hub enables users to publish, discover, and deploy containerized applications using flists. It acts as a central repository for workload images and provides on-the-fly conversion from Docker images, direct archive upload, flist merging, and a REST API for automation.
+ZOS Flist Hub enables users to publish, discover, and deploy containerized applications using flists. It acts as a central repository for workload images and provides on-the-fly conversion from Docker images, direct archive upload, flist merging, and a REST API for automation.
 
 Flist files are databases of metadata that describe container or VM contents. They allow workloads to be mounted on demand without shipping full image layers, making distribution efficient across a decentralized network.
 
@@ -24,7 +24,7 @@ Flist files are databases of metadata that describe container or VM contents. Th
 
 ZOS, also known as Zero-OS, is the operating system layer used to run and manage nodes. It provides the low-level runtime environment for workloads, networking, storage, and automation.
 
-0-Hub is the distribution point for workload images consumed by ZOS nodes. When a user deploys a container or virtual machine, ZOS fetches the referenced flist from the hub and mounts the contents on the node. The hub therefore sits between image publishers and the runtime environment.
+ZOS Flist Hub is the distribution point for workload images consumed by ZOS nodes. When a user deploys a container or virtual machine, ZOS fetches the referenced flist from the hub and mounts the contents on the node. The hub therefore sits between image publishers and the runtime environment.
 
 ## Relation to ThreeFold
 
