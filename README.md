@@ -1,170 +1,156 @@
-# Zero-OS Hub
+# 0-Hub
 
-This is the repository for the Zero-OS Hub website.
-It contains all the source code needed to make the public Zero-OS Hub website.
+A container image registry and management service for distributing flists, a lightweight container format used to package and deploy workloads on decentralized infrastructure.
+
+## What this is
+
+0-Hub enables users to publish, discover, and deploy containerized applications using flists. It acts as a central repository for workload images and provides on-the-fly conversion from Docker images, direct archive upload, flist merging, and a REST API for automation.
+
+Flist files are databases of metadata that describe container or VM contents. They allow workloads to be mounted on demand without shipping full image layers, making distribution efficient across a decentralized network.
+
+## What this repository contains
+
+- Web application and REST API for flist management
+- Docker image-to-flist converter integration
+- Archive upload and automatic flist generation
+- Flist merging and cross-repository promotion tools
+- Tag and symbolic link management
+- Authentication layer (3bot)
+- Docker deployment configuration in the `deployment/` directory
+
+## Role in the stack
+
+## ZOS / Zero-OS
+
+ZOS, also known as Zero-OS, is the operating system layer used to run and manage nodes. It provides the low-level runtime environment for workloads, networking, storage, and automation.
+
+0-Hub is the distribution point for workload images consumed by ZOS nodes. When a user deploys a container or virtual machine, ZOS fetches the referenced flist from the hub and mounts the contents on the node. The hub therefore sits between image publishers and the runtime environment.
+
+## Relation to ThreeFold
+
+This technology is used within the ThreeFold ecosystem and was first deployed on the ThreeFold Grid. The component itself is designed as reusable infrastructure technology and should be understood by its technical function first, independent of any specific deployment.
+
+## Ownership
+
+This repository is owned and maintained by TF-Tech NV, a Belgian company responsible for the development and maintenance of this technology.
 
 ## Releases
-- [master](https://github.com/threefoldtech/0-hub/tree/master) - stable production version
-- [playground](https://github.com/threefoldtech/0-hub/tree/playground) - development playground version
 
-# Docker Image
+- `master` — stable production version
+- `playground` — development playground version
 
-You can use GitHub Package directly: `docker pull ghcr.io/threefoldtech/0-hub:master`
+## Docker Image
 
-Here are some point you need to run the hub:
-- Mount `/hub/src/config.py` with your configuration file
-- Mount `/public` with your target public directories
-- Mount `/workdir` with your target temporary directory
-- Mount host docker.sock to `/var/run/docker.sock` to be able to run docker converter
+You can use the GitHub Package directly:
 
-Regarding configuration, here are some requirement:
-- `zflist-bin` have to be or unset or set to: `/usr/bin/zflist` (it's part of the image)
-  - Comment this line in config to make it simple
+```bash
+docker pull ghcr.io/threefoldtech/0-hub:master
+```
 
-Dockerfile can be found on `deployment` directory.
+Mount points required:
+- `/hub/src/config.py` — your configuration file
+- `/public` — target public directories
+- `/workdir` — target temporary directory
+- `/var/run/docker.sock` — host Docker socket (for the image converter)
 
-# The Hub
-The Zero OS Hub allows you to do multiple things.
+Configuration note:
+- `zflist-bin` should be unset or set to `/usr/bin/zflist` (included in the image). Comment this line in the config to keep it simple.
 
-## Public centralization of flists
-The hub is mainly there to gives an easy way to distribute flist files.
-Flist are database of metadata you can use in any Zero-OS container/vm.
+The Dockerfile can be found in the `deployment/` directory.
 
-## Uploading your files
-In order to publish easily your files, you can upload a `.tar.gz` and the hub will convert it automatically to a flist
-and store the contents in the hub backend. After that you can use your flist directly on a container.
+## Features
 
-## Merging multiple flists
-In order to reduce the maintenance of your images, products, etc. flist allows you to keep your
-different products and files separately and then merge them with another flist to make it usable without
-keeping the system up-to-date.
+### Public centralization of flists
 
-Example: there is an official `ubuntu 16.04` flist image, you can make a flist which contains your application files
-and then merge your flist with ubuntu, so the resulting flist is your product on the last version of ubunbu.
-You don't need to take care about the base system yourself, just merge it with the one provided.
+The hub provides an easy way to distribute flist files. Flist files are databases of metadata that can be used in any Zero-OS container or VM.
 
-## Convert a docker hub's image to a flist on-the-fly
-You can convert a docker image (eg: `busybox`, `ubuntu`, `fedora`, `couchdb`, ...) to a flist directly from
-the backend, this allows you to use your existing docker image in our infrastructure out-of-the-box.
+### Uploading files
 
-## Upload your existing flist to reduce bandwidth
-In addition with the hub-client (a side product) you can upload efficiently contents of file
-to make the backend up-to-date and upload a self-made flist. This allows you to do all the jobs yourself
-and gives you the full control of the chain. The only restriction is that the contents of the files you host
-on the flist needs to exists on the backend, otherwise your flist will be rejected.
+Upload a `.tar.gz` archive and the hub converts it automatically to a flist, storing the contents in the backend. After conversion the flist can be used directly on a container.
 
-## Authentication via 3bot or itsyou.online
-All the operations on the hub needs to be done via a `3bot` (default) or `itsyou.online` (deprecated) authentication.
-Only downloading a flist can be done anonymously.
+### Merging multiple flists
 
-## Getting information through API
-The hub host a basic REST API which can gives you some informations about flists, renaming them, remove them, etc.
+Flist allows you to keep different products and files separately, then merge them together. For example, you can create a flist containing your application files and merge it with an official base-system flist. The resulting flist contains your product on the latest version of the base system.
 
-To use authenticated endpoints, you need to provide a itsyou.online valid `jwt` via `Authorization: bearer <jwt>` header.
-This `jwt` can contains special `memberof` to allows you cross-repository actions.
+### Converting Docker images
 
-If your `jwt` contains memberof, you can choose which user you want to use by specifying cookie `active-user`.
-See example below.
+Convert a Docker image (e.g., `busybox`, `ubuntu`, `fedora`, `couchdb`) to a flist directly from the backend. This allows existing Docker images to be used in the infrastructure out-of-the-box.
 
-### Public API endpoints (no authentication needed)
-- `/api/flist` (**GET**)
-  - Returns a json array with all repository/flists found
-- `/api/repositories` (**GET**)
-  - Returns a json array with all repositories found
-- `/api/fileslist` (**GET**)
-  - Returns a json array with all repositories and files found
-- `/api/flist/<repository>` (**GET**)
-  - Returns a json array of each flist found inside specified repository.
-  - Each entry contains `filename`, `size`, `updated` date and `type` (regular, symlink, taglink) and optionally `target` if it's a link.
-- `/api/flist/<repository>/<flist>` (**GET**, **INFO**)
-  - **GET**: returns json object with flist dumps (full file list)
-  - **INFO**: returns a reduced information (no files dumps) about flist
-- `/api/flist/<repository>/<flist>/light` (**GET**)
-  - Same as **INFO** above
-- `/api/flist/<repository>/<flist>/taglink` (**GET**)
-  - Get target of a `taglink` (link to a tag)
-- `/api/flist/<repository>/tags/<tag>` (**GET**)
-  - Returns content of a tags (links inside a tag)
+### Uploading existing flists
 
-### Restricted API endpoints (authentication required)
-- `/api/flist/me` (**GET**)
-  - Returns json object with some basic information about yourself (authenticated user)
-- `/api/flist/me/<flist>` (**GET**, **DELETE**)
-  - **GET**: same as `/api/flist/<your-repository>/<flist>`
-  - **DELETE**: remove that specific flist (or taglink)
-- `/api/flist/me/<source>/link/<linkname>` (**GET**)
-  - Create a symbolic link `linkname` pointing to `source`
-- `/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>` (**GET**)
-  - Create a cross-repository symbolic link `linkname` pointing to `repository/sourcename`
-- `/api/flist/me/<source>/rename/<destination>` (**GET**)
-  - Rename `source` to `destination`
-- `/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>` (**GET**)
-  - Copy cross-repository `sourcerepo/sourcefile` to your `[local-repository]/localname` file
-  - This is useful when you want to copy flist from one repository to another one, if your jwt allows it
-- `/api/flist/me/upload` (**POST**)
-  - **POST**: uploads a `.tar.gz` archive and convert it to an flist
-  - Your file needs to be passed via `file` form attribute
-- `/api/flist/me/upload-flist` (**POST**)
-  - **POST**: uploads a `.flist` file and store it
-  - Note: the flist is checked and full contents is verified to be found on the backend, if some chunks are missing, the file will be discarded.
-  - Your file needs to be passed via `file` form attribute
-- `/api/flist/me/merge/<target>` (**POST**)
-  - **POST**: merge multiple flist together
-  - You need to passes a json array of flists (in form `repository/file`) as POST body
-- `/api/flist/me/docker` (**POST**)
-  - **POST**: converts a docker image to an flist
-  - You need to passes `image` form argument with docker-image name
-  - The resulting conversion will stay on your repository
-- `/api/flist/me/<tagname>/<name>/tag/<repository>/<flist>` (**GET**, **DELETE**)
-  - **GET**: add flist `repository/flist` in user tag `tagname` with name `name`
-  - **DELETE**: remove `name` from `tagname`, if tag become empty, tag is removed
-- `/api/flist/me/<name>/crosstag/<repository>/<tagname>` (**GET**, **DELETE**)
-  - **GET**: create a link `name` inside your repository, pointing to `repository/tag`
- 
-### Example
-Simple example how to upload to the hub in command line. Your token can be generated on the website.
+Using the hub-client, you can efficiently upload file contents to bring the backend up-to-date and upload a self-made flist. The only restriction is that the file contents referenced by the flist must exist on the backend; otherwise the flist will be rejected.
+
+## API
+
+The hub exposes a REST API for querying and managing flists.
+
+### Public endpoints (no authentication)
+
+- `/api/flist` (**GET**) — returns all repository/flist entries
+- `/api/repositories` (**GET**) — returns all repositories
+- `/api/fileslist` (**GET**) — returns all repositories and files
+- `/api/flist/<repository>` (**GET**) — returns flists in the specified repository
+- `/api/flist/<repository>/<flist>` (**GET**, **INFO**) — **GET**: full file list; **INFO**: reduced information
+- `/api/flist/<repository>/<flist>/light` (**GET**) — same as **INFO**
+- `/api/flist/<repository>/<flist>/taglink` (**GET**) — get target of a taglink
+- `/api/flist/<repository>/tags/<tag>` (**GET**) — returns contents of a tag
+
+### Restricted endpoints (authentication required)
+
+- `/api/flist/me` (**GET**) — basic information about the authenticated user
+- `/api/flist/me/<flist>` (**GET**, **DELETE**) — get or remove a specific flist
+- `/api/flist/me/<source>/link/<linkname>` (**GET**) — create a symbolic link
+- `/api/flist/me/<linkname>/crosslink/<repository>/<sourcename>` (**GET**) — create a cross-repository link
+- `/api/flist/me/<source>/rename/<destination>` (**GET**) — rename a flist
+- `/api/flist/me/promote/<sourcerepo>/<sourcefile>/<localname>` (**GET**) — copy a flist across repositories
+- `/api/flist/me/upload` (**POST**) — upload a `.tar.gz` and convert it to a flist
+- `/api/flist/me/upload-flist` (**POST**) — upload a `.flist` file directly
+- `/api/flist/me/merge/<target>` (**POST**) — merge multiple flists
+- `/api/flist/me/docker` (**POST**) — convert a Docker image to a flist
+- `/api/flist/me/<tagname>/<name>/tag/<repository>/<flist>` (**GET**, **DELETE**) — add or remove a flist from a tag
+- `/api/flist/me/<name>/crosstag/<repository>/<tagname>` (**GET**, **DELETE**) — create a cross-repository tag link
+
+### Examples
+
+Upload an archive:
+
 ```bash
 curl -H "Authorization: bearer ...token..." -X POST -F file=@my-local-archive.tar.gz \
     https://hub.grid.tf/api/flist/me/upload
 ```
 
-Simple example how to use all feature to do some flist promotion. In this case, let assume:
-- The real user is `user1`
-- This user have `member-of` field for `userX` in his jwt
-- This user want to promote `user2/my-app-0.1.0` flist to `userX/official-app-0.1.0`
+Promote a flist across repositories (assuming `member-of` in JWT):
 
 ```bash
 curl -b "active-user=userX;" -H "Authorization: bearer ...token..." \
     "https://hub.grid.tf/api/flist/me/promote/user2/my-app-0.1.0/official-app-0.1.0"
 ```
 
-# Backend
-Creation of flists are made using [0-flist](https://github.com/threefoldtech/0-flist) and storage backend is [0-db](https://github.com/threefoldtech/0-db).
-You need both of them working before getting a working hub.
+## Backend
 
-# Installation
-In order to deploy your own hub, you need a working `0-flist` binary. You can see in `deployment/deploy.sh` script how to compile it.
-Alternatively, you can just download a precompiled version from [0-flist release](https://github.com/threefoldtech/0-flist/releases) page.
+Flist creation uses [0-flist](https://github.com/threefoldtech/0-flist) and the storage backend is [0-db](https://github.com/threefoldtech/0-db). Both must be available before the hub is fully operational.
 
-Copy the `src/config.py.sample` file to `src/config.py`, the file itself is well documented, then you can start the server:
-```sh
+## Installation
+
+To deploy your own hub, you need a working `0-flist` binary. See `deployment/deploy.sh` for compilation instructions, or download a precompiled release from the [0-flist releases](https://github.com/threefoldtech/0-flist/releases) page.
+
+Copy `src/config.py.sample` to `src/config.py`, then start the server:
+
+```bash
 cd src
 python flist-uploader.py
 ```
 
-# Dependencies
+## Dependencies
 
-To run latest hub, you need Flask >2.0. We recommend using Ubuntu 22.04.
+The latest hub requires Flask > 2.0. Ubuntu 22.04 is recommended.
 
-```
+```bash
 apt-get install python3-flask python3-requests python3-jose python3-nacl \
     python3-redis python3-docker python3-pytoml
 ```
 
-# Repository Owner
-- [Maxime Daniel](https://github.com/maxux), Telegram: [@maxux](http://t.me/maxux)
-
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-Copyright (c) TFTech NV.
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+Copyright (c) TF-Tech NV.
