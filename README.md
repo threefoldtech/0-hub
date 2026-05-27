@@ -153,4 +153,3 @@ apt-get install python3-flask python3-requests python3-jose python3-nacl \
 ## License
 
 This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
-Copyright (c) TF-Tech NV.
