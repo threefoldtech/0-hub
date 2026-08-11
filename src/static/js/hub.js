@@ -22,7 +22,7 @@ function repositories(source) {
 function flists_file(file, username, tagname) {
     var output = {
         'size': file['size'],
-        'updated': file['updated'],
+        'updated': (file['type'] == 'symlink' || file['type'] == 'taglink') && file['linktime'] ? file['linktime'] : file['updated'],
     };
 
     var fileicon = $('<span>', {'class': 'glyphicon glyphicon-file'});
